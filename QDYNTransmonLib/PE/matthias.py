@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 In the PE project, Matthias Müller did an optimization of the same system using
 CRAB.

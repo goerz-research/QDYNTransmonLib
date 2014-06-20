@@ -1,6 +1,8 @@
-./setup.py
-./MANIFEST
-./QDYNTransmonLib/io.py
+./Makefile
+./QDYNTransmonLib/PE/__init__.py
+./QDYNTransmonLib/PE/matthias.py
 ./QDYNTransmonLib/__init__.py
 ./QDYNTransmonLib/holonomic.py
-./Makefile
+./QDYNTransmonLib/io.py
+./QDYNTransmonLib/testreduced.py
+./setup.py
