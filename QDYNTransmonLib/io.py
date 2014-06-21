@@ -110,5 +110,5 @@ def weyl_path(datfile):
     optimization.
     """
     c1, c2, c3 = np.genfromtxt(datfile, usecols=(8,9,10), unpack=True)
-        return zip(c1, c2, c3)
+    return zip(c1, c2, c3)
 
