@@ -103,4 +103,12 @@ class RedHamLevels():
             if (ii == i) and (jj == j):
                 return E
 
+def weyl_path(datfile):
+    """
+    Extract the Weyl chamber coordinates c1, c2, c3 as numpy arrays over
+    iteration number the local_invariants_oct_iter.dat file written during
+    optimization.
+    """
+    c1, c2, c3 = np.genfromtxt(datfile, usecols=(8,9,10), unpack=True)
+        return zip(c1, c2, c3)
 
