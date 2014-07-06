@@ -460,11 +460,13 @@ def write_ham_matrices(ham_matrices, params, outfolder):
         j = l - i*nq
         return (i,j)
 
-    def write_h(h, outfile, comment, header, nq, rwa_factor, unit='au'):
+    def write_h(h, outfile, comment, header, nq, rwa_factor, conversion_factor,
+                unit):
         """ Write out numpy matrix in sparse format to outfile
 
-            The values of the Hamiltonian will be converted to the given unit
-            and multiplied with rwa_factor. Multiplying with rwa_factor is to
+            The given 'unit' will be written to the header of outfile, and the
+            Hamiltonian will be converted using conversion_factor, as well as
+            multiplied with rwa_factor. Multiplying with rwa_factor is to
             account for the reduction of the pulse amplitude by a factor 1/2,
             which was not taken into account in the analytic derivations.
             Consequently, an Hamiltonian connected to Omega^n will have to
@@ -479,13 +481,7 @@ def write_ham_matrices(ham_matrices, params, outfolder):
                 i = sparse_h.col[i_val] + 1 # 1-based indexing
                 j = sparse_h.row[i_val] + 1
                 v = sparse_h.data[i_val]
-                if unit == 'au':
-                    v *= 1.5198298e-10
-                elif unit == 'GHz':
-                    v *= 1.0e-3
-                else:
-                    raise ValueError("unit must be au or GHz")
-                v *= rwa_factor
+                v *= conversion_factor * rwa_factor
                 if (j >= i):
                     ii, ji = qnums(i, nq)
                     ij, jj = qnums(j, nq)
@@ -496,21 +492,21 @@ def write_ham_matrices(ham_matrices, params, outfolder):
 
     h0 = ham_matrices[0]
     outfile = os.path.join(outfolder, 'ham_eff_drift.dat')
-    write_h(h0, outfile, comment, header, nq, 1.0, 'GHz')
+    write_h(h0, outfile, comment, header, nq, 1.0, 1.0e-3, 'GHz')
 
     header = header_fmt % ('value [au]', 'i,j (row)', 'i,j col')
 
     h1 = ham_matrices[1]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl.dat')
-    write_h(h1, outfile, comment, header, nq, 0.5, 'au')
+    write_h(h1, outfile, comment, header, nq, 0.5, 1.0, 'au')
 
     h2 = ham_matrices[2]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl2.dat')
-    write_h(h2, outfile, comment, header, nq, 0.25, 'au')
+    write_h(h2, outfile, comment, header, nq, 0.25, 6.5796839e+09, 'au')
 
     h3 = ham_matrices[3]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl3.dat')
-    write_h(h3, outfile, comment, header, nq, 0.125, 'au')
+    write_h(h3, outfile, comment, header, nq, 0.125, 4.3292241e+19, 'au')
 
 
 def generate_ham_files(config, outfolder):
