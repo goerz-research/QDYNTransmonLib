@@ -158,7 +158,7 @@ def run(config, nq_reduced, pulse_E0, notebook=True, folder="./"):
         "cd %s" % runfolder_full,
         "export OMP_NUM_THREADS=4",
         "tm_en_gh --rwa .",
-        "tm_en_logical_eigenstates .",
+        "tm_en_logical_eigenstates.py .",
         "tm_en_prop . > prop.log",
         "tail prop.log"
         ]
