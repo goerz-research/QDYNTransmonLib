@@ -2,6 +2,7 @@
 Reading and writing data
 """
 import re
+import os
 import numpy as np
 from QDYN.units import NumericConverter
 
@@ -112,3 +113,166 @@ def weyl_path(datfile):
     c1, c2, c3 = np.genfromtxt(datfile, usecols=(8,9,10), unpack=True)
     return zip(c1, c2, c3)
 
+
+class ExcitationDataSet():
+    """ Class holding information about integrated qubit or cavity population
+        over time
+
+        Attributes
+        ----------
+
+        tgrid   Time grid array
+        mean    Array of mean excitation over time
+        sd      Standard Deviation from the mean, over time
+    """
+    def __init__(self, filename):
+        """ Load data from the given filename
+
+            The filename must contain the time grid in the first column and
+            then one column for each qubit or cavity quantum number, giving the
+            integrated populations for that quantum number
+            The tm_*_prop programs produces files such as 'psi00_cavity.dat',
+            'psi00_q1.dat', 'psi00_q2.dat', 'rho00_cavity.dat', 'rho00_q1.dat',
+            'rho00_q2.dat' in the right format.
+        """
+        table       = np.genfromtxt(filename)
+        self.tgrid  = table[:,0] # first column
+        nt          = len(self.tgrid)
+        n           = len(table[1,:]) - 1 # number of columns, -1 for time grid
+        self.mean   = np.zeros(nt)
+        self.sd     = np.zeros(nt)
+        for i_t, t in enumerate(self.tgrid):
+            for i_c in xrange(n):
+                if not np.isnan(table[i_t,i_c+1]):
+                    self.mean[i_t] += float(i_c) * table[i_t,i_c+1]
+            for i_c in xrange(n):
+                if not np.isnan(table[i_t,i_c+1]):
+                    self.sd[i_t] += (float(i_c) - self.mean[i_t])**2 \
+                                    * table[i_t,i_c+1]
+            self.sd[i_t] = np.sqrt(self.sd[i_t])
+
+
+class PopulationDataSet():
+    """
+    Class holding information about population dynamics in the logical subspace
+    over time
+
+    Attributes
+    ----------
+
+    tgrid   Time grid array
+    pop00   Population in the 00 state, over time
+    pop01   Population in the 01 state, over time
+    pop10   Population in the 10 state, over time
+    pop11   Population in the 11 state, over time
+    """
+    def __init__(self, filename, hilbert_space):
+        """
+        Load data from the given filename
+
+        If the given file is for the propagation of a state in Hilbert
+        space, it must contain 9 columns: The time grid, and the real and
+        imaginary part of the projection onto the states 00, 01, 10, and 11
+        over time, respectively. The tm_en_prop and tm_eff_prop programs
+        generate e.g. the file psi00_phases.dat in the correct format
+
+        If the propagation is in Liouville space, the file must contain 5
+        columns: The time grid, and the population in the four logical
+        basis states, over time. The tm_en_rho_prop and tm_eff_rho_prop
+        programs generage e.g. rho00_popdyn.dat in the correct format
+        """
+        if hilbert_space:
+            table       = np.genfromtxt(filename)
+            self.tgrid  = table[:,0] # first column
+            nt          = len(self.tgrid)
+            self.pop00  = np.zeros(nt)
+            self.pop01  = np.zeros(nt)
+            self.pop10  = np.zeros(nt)
+            self.pop11  = np.zeros(nt)
+            for i_t, t in enumerate(self.tgrid):
+                x00 = table[i_t,1]
+                y00 = table[i_t,2]
+                x01 = table[i_t,3]
+                y01 = table[i_t,4]
+                x10 = table[i_t,5]
+                y10 = table[i_t,6]
+                x11 = table[i_t,7]
+                y11 = table[i_t,8]
+                self.pop00[i_t] = x00**2 + y00**2
+                self.pop01[i_t] = x01**2 + y01**2
+                self.pop10[i_t] = x10**2 + y10**2
+                self.pop11[i_t] = x11**2 + y11**2
+        else:
+            self.tgrid, self.pop00, self.pop01, self.pop10, self.pop11 \
+            = np.genfromtxt(filename, unpack=True)
+
+    def write(self, outfile):
+        """ Write stored data to outfile, one column per attribute
+            (i.e. data as it will be plotted)
+        """
+        data = np.column_stack((self.tgrid.flatten(),
+                                self.pop00.flatten(),
+                                self.pop01.flatten(),
+                                self.pop10.flatten(),
+                                self.pop11.flatten()))
+        header = ("%23s"+"%25s"*4) % ("time [ns]",
+                                      "pop00", "pop01", "pop10", "pop11")
+        np.savetxt(outfile, data, fmt='%25.16E'*5, header=header)
+
+
+
+def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
+    r'''
+    Take an array of data_files that must math the regular expression
+
+        (psi|rho)(00|01|10|11)_(cavity|q1|q2|phases|popdyn)\.dat
+
+    Filenames not following this pattern will raise a ValueError.
+
+    For each file, create a instance of ExcitationDataSet (if filename ends in
+    cavity, q1, or q2) or PopulationDataSet (if filename ends in phases or
+    popdyn)
+
+    Return an array of the data set instances. Each file in data_files must
+    exist inside the given runfolder (otherwise an IOError is rased).
+
+    If write_plot_data is given as True, call the `write` method of the data
+    set instance. The outfile is in the given runfolder, with its name
+    depending on the corresponding input file. For example,
+
+        psi00_cavity.dat    => psi00_cavity_excitation_plot.dat
+        psi01_q1.dat        => psi01_q1_exciation_plot.dat
+        psi10_q2.dat        => psi10_q1_exciation_plot.dat
+        psi11_phases.dat    => psi11_logical_pop_plot.dat
+        rho00_popdyn.dat    => rho00_logical_pop_plot.dat
+        ...
+
+    '''
+    file_pt = r'(psi|rho)(00|01|10|11)_(cavity|q1|q2|phases|popdyn)\.dat'
+    file_rx = re.compile(file_pt)
+    data = [] # array for collecting *all* datasets
+    for file in data_files:
+        m = file_rx.match(file)
+        if not m:
+            raise ValueError("File must match pattern %s" % file_rx.pattern)
+        filename = os.path.join(runfolder, file)
+        if os.path.isfile(filename):
+            if m.group(3) in ['phases', 'popdyn']:
+                data.append(PopulationDataSet(filename,
+                            hilbert_space=(m.group(1)=='psi')))
+            else:
+                data.append(ExcitationDataSet(filename))
+            if write_plot_data:
+                prefix = m.group(1) + m.group(2)
+                outfile = {
+                    'phases': "%s_logical_pop_plot.dat" % prefix,
+                    'popdyn': "%s_logical_pop_plot.dat" % prefix,
+                    'cavity': "%s_cavity_excitation_plot.dat" % prefix,
+                    'q1'    : "%s_q1_excitation_plot.dat" % prefix,
+                    'q2'    : "%s_q2_excitation_plot.dat" % prefix
+                }
+                data[-1].write(os.path.join(runfolder,
+                               outfile[m.group(3)]))
+        else:
+            raise IOError("File %s must exist in runfolder" % filename)
+    return data
