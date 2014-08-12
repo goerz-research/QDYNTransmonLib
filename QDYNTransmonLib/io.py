@@ -4,6 +4,7 @@ Reading and writing data
 import re
 import os
 import numpy as np
+import scipy
 from QDYN.units import NumericConverter
 
 
@@ -15,7 +16,7 @@ def read_params(config, unit):
     result = {}
 
     float_params = ['w_c', 'w_1', 'w_2', 'w_d', 'alpha_1', 'alpha_2', 'g_1',
-                    'g_2', 'zeta']
+                    'g_2', 'zeta', 'kappa']
     int_params = ['n_qubit', 'n_cavity']
 
     float_rxs = {}
@@ -78,6 +79,23 @@ class FullHamLevels():
         in zip(self.level_i, self.level_j, self.level_n, self.E):
             if (ii == i) and (jj == j) and (nn == n):
                 return E
+
+    def print_dressed_params(self):
+        """
+        Print a summary of the dressed frame parameters
+        """
+        w_1 = self.get(1,0,0)
+        w_2 = self.get(0,1,0)
+        w_c = self.get(0,0,1)
+        alpha_2 = self.get(0,2,0) - 2*w_2
+        alpha_1 = self.get(2,0,0) - 2*w_1
+        print "w_c (MHz)     = ", w_c * 1000.0
+        print "w_1 (MHz)     = ", w_1 * 1000.0
+        print "w_2 (MHz)     = ", w_2 * 1000.0
+        print "w_d (MHz)     = ", 0.0
+        print "alpha_1 (MHz) = ", alpha_1 * 1000.0
+        print "alpha_2 (MHz) = ", alpha_2 * 1000.0
+
 
 class RedHamLevels():
     """
@@ -276,3 +294,88 @@ def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
         else:
             raise IOError("File %s must exist in runfolder" % filename)
     return data
+
+
+def full_qnums(level_index, n_qubit, n_cavity):
+    """
+    Given a 1-based level_index, return tuple of 0-based quantum numbers
+    (i, j, n)
+    """
+    l = level_index - 1
+    nn = n_qubit * n_cavity
+    i = l / nn
+    l = l - i * nn
+    j = l / n_cavity
+    n = l - j * n_cavity
+    return (i, j, n)
+
+
+def red_qnums(level_index, nq):
+    """
+    Given 1-based level_index, return tuple of 0-based quantum numbers (i, j)
+    """
+    l = level_index - 1
+    i = l / nq
+    j = l - i*nq
+    return (i,j)
+
+
+def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
+    conversion_factor, unit):
+    """ Write out numpy matrix in sparse format to outfile
+
+        The given 'unit' will be written to the header of outfile, and the
+        Hamiltonian will be converted using conversion_factor, as well as
+        multiplied with rwa_factor. Multiplying with rwa_factor is to
+        account for the reduction of the pulse amplitude by a factor 1/2,
+        which was not taken into account in the analytic derivations.
+        Consequently, an Hamiltonian connected to Omega^n will have to
+        receive an rwa_factor for 1 / 2^n
+    """
+    header_fmt = "#    row  column %24s %20s %24s"
+    header = header_fmt % ('value [%s]' % unit, 'i,j,n (row)', 'i,j,n (col)')
+    fmt = "%8d%8d%25.16E%7d%7d%7d    %7d%7d%7d"
+    with open(outfile, 'w') as out_fh:
+        print >> out_fh, comment
+        print >> out_fh, header
+        sparse_h = scipy.sparse.coo_matrix(h)
+        for i_val in xrange(sparse_h.nnz):
+            i = sparse_h.col[i_val] + 1 # 1-based indexing
+            j = sparse_h.row[i_val] + 1
+            v = sparse_h.data[i_val]
+            v *= conversion_factor * rwa_factor
+            if (j >= i):
+                ii, ji, ni = full_qnums(i, nq, nc)
+                ij, jj, nj = full_qnums(j, nq, nc)
+                print >> out_fh, fmt % (i, j, v, ii, ji, ni, ij, jj, nj)
+
+
+def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
+    conversion_factor, unit):
+    """ Write out numpy matrix in sparse format to outfile
+
+        The given 'unit' will be written to the header of outfile, and the
+        Hamiltonian will be converted using conversion_factor, as well as
+        multiplied with rwa_factor. Multiplying with rwa_factor is to
+        account for the reduction of the pulse amplitude by a factor 1/2,
+        which was not taken into account in the analytic derivations.
+        Consequently, an Hamiltonian connected to Omega^n will have to
+        receive an rwa_factor for 1 / 2^n
+    """
+    header_fmt = "#    row  column %24s %13s %17s"
+    header = header_fmt % ('value [%s]' % unit, 'i,j (row)', 'i,j col')
+    fmt = "%8d%8d%25.16E%7d%7d    %7d%7d"
+    with open(outfile, 'w') as out_fh:
+        print >> out_fh, comment
+        print >> out_fh, header
+        sparse_h = scipy.sparse.coo_matrix(h)
+        for i_val in xrange(sparse_h.nnz):
+            i = sparse_h.col[i_val] + 1 # 1-based indexing
+            j = sparse_h.row[i_val] + 1
+            v = sparse_h.data[i_val]
+            v *= conversion_factor * rwa_factor
+            if (j >= i):
+                ii, ji = red_qnums(i, nq)
+                ij, jj = red_qnums(j, nq)
+                print >> out_fh, fmt % (i, j, v, ii, ji, ij, jj)
+

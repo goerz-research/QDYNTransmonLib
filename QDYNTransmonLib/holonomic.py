@@ -8,11 +8,11 @@
 import os
 from functools import partial
 import numpy as np
-import scipy
 import sympy
 from sympy.physics.quantum import TensorProduct
 sympy.init_printing()
 import QDYNTransmonLib.io
+from QDYNTransmonLib.io import write_red_ham_matrix
 
 
 def mat_sympy_to_numpy(m):
@@ -427,8 +427,6 @@ def get_ham_matrices(ops, symbols, params, formulas, print_vals=False):
 
 ### Output
 
-# In[25]:
-
 def write_ham_matrices(ham_matrices, params, outfolder):
     """ Write the given array of 4 Hamiltonian matrices
         to the files ham_eff_drift.dat, ham_eff_ctrl.dat,
@@ -450,63 +448,22 @@ def write_ham_matrices(ham_matrices, params, outfolder):
         comment += " %s = %f  MHZ," % (sym_name, val)
 
 
-    header_fmt = "#    row  column %24s %13s %17s"
-
-    def qnums(level_index, nq):
-        """ given 1-based level_index, return tuple of 1-based quantum numbers
-        """
-        l = level_index - 1
-        i = l / nq
-        j = l - i*nq
-        return (i,j)
-
-    def write_h(h, outfile, comment, header, nq, rwa_factor, conversion_factor,
-                unit):
-        """ Write out numpy matrix in sparse format to outfile
-
-            The given 'unit' will be written to the header of outfile, and the
-            Hamiltonian will be converted using conversion_factor, as well as
-            multiplied with rwa_factor. Multiplying with rwa_factor is to
-            account for the reduction of the pulse amplitude by a factor 1/2,
-            which was not taken into account in the analytic derivations.
-            Consequently, an Hamiltonian connected to Omega^n will have to
-            receive an rwa_factor for 1 / 2^n
-        """
-        fmt = "%8d%8d%25.16E%7d%7d    %7d%7d"
-        with open(outfile, 'w') as out_fh:
-            print >> out_fh, comment
-            print >> out_fh, header
-            sparse_h = scipy.sparse.coo_matrix(h)
-            for i_val in xrange(sparse_h.nnz):
-                i = sparse_h.col[i_val] + 1 # 1-based indexing
-                j = sparse_h.row[i_val] + 1
-                v = sparse_h.data[i_val]
-                v *= conversion_factor * rwa_factor
-                if (j >= i):
-                    ii, ji = qnums(i, nq)
-                    ij, jj = qnums(j, nq)
-                    print >> out_fh, fmt % (i, j, v, ii, ji, ij, jj)
-
-
-    header = header_fmt % ('value [GHz]', 'i,j (row)', 'i,j col')
 
     h0 = ham_matrices[0]
     outfile = os.path.join(outfolder, 'ham_eff_drift.dat')
-    write_h(h0, outfile, comment, header, nq, 1.0, 1.0e-3, 'GHz')
-
-    header = header_fmt % ('value [au]', 'i,j (row)', 'i,j col')
+    write_red_ham_matrix(h0, outfile, comment, nq, 1.0, 1.0e-3, 'GHz')
 
     h1 = ham_matrices[1]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl.dat')
-    write_h(h1, outfile, comment, header, nq, 0.5, 1.0, 'au')
+    write_red_ham_matrix(h1, outfile, comment, nq, 0.5, 1.0, 'au')
 
     h2 = ham_matrices[2]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl2.dat')
-    write_h(h2, outfile, comment, header, nq, 0.25, 6.5796839e+09, 'au')
+    write_red_ham_matrix(h2, outfile, comment, nq, 0.25, 6.5796839e+09, 'au')
 
     h3 = ham_matrices[3]
     outfile = os.path.join(outfolder, 'ham_eff_ctrl3.dat')
-    write_h(h3, outfile, comment, header, nq, 0.125, 4.3292241e+19, 'au')
+    write_red_ham_matrix(h3, outfile, comment, nq, 0.125, 4.3292241e+19, 'au')
 
 
 def generate_ham_files(config, outfolder):
