@@ -321,7 +321,7 @@ def red_qnums(level_index, nq):
 
 
 def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
-    conversion_factor, unit):
+    conversion_factor, unit, complex=False):
     """ Write out numpy matrix in sparse format to outfile
 
         The given 'unit' will be written to the header of outfile, and the
@@ -331,10 +331,20 @@ def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
         which was not taken into account in the analytic derivations.
         Consequently, an Hamiltonian connected to Omega^n will have to
         receive an rwa_factor for 1 / 2^n
+
+        If complex is True, an extra column is written for the imaginary part
     """
-    header_fmt = "#    row  column %24s %20s %24s"
-    header = header_fmt % ('value [%s]' % unit, 'i,j,n (row)', 'i,j,n (col)')
-    fmt = "%8d%8d%25.16E%7d%7d%7d    %7d%7d%7d"
+    if complex:
+        header_fmt = "#    row  column %24s %24s %20s %24s"
+        header = header_fmt % ('Re(value) [%s]' % unit,
+                               'Im(value) [%s]' % unit,
+                               'i,j,n (row)', 'i,j,n (col)')
+        fmt = "%8d%8d%25.16E%25.16E%7d%7d%7d    %7d%7d%7d"
+    else:
+        header_fmt = "#    row  column %24s %20s %24s"
+        header = header_fmt % ('value [%s]' % unit,
+                               'i,j,n (row)', 'i,j,n (col)')
+        fmt = "%8d%8d%25.16E%7d%7d%7d    %7d%7d%7d"
     with open(outfile, 'w') as out_fh:
         print >> out_fh, comment
         print >> out_fh, header
@@ -344,14 +354,21 @@ def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
             j = sparse_h.row[i_val] + 1
             v = sparse_h.data[i_val]
             v *= conversion_factor * rwa_factor
+            if (not complex):
+                assert(v.imag == 0.0), "matrix has unexpected complex values"
             if (j >= i):
                 ii, ji, ni = full_qnums(i, nq, nc)
                 ij, jj, nj = full_qnums(j, nq, nc)
-                print >> out_fh, fmt % (i, j, v, ii, ji, ni, ij, jj, nj)
+                if complex:
+                    print >> out_fh, fmt % (i, j, v.real, v.imag,
+                                            ii, ji, ni, ij, jj, nj)
+                else:
+                    print >> out_fh, fmt % (i, j, v.real,
+                                            ii, ji, ni, ij, jj, nj)
 
 
 def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
-    conversion_factor, unit):
+    conversion_factor, unit, complex=False):
     """ Write out numpy matrix in sparse format to outfile
 
         The given 'unit' will be written to the header of outfile, and the
@@ -361,10 +378,19 @@ def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
         which was not taken into account in the analytic derivations.
         Consequently, an Hamiltonian connected to Omega^n will have to
         receive an rwa_factor for 1 / 2^n
+
+        If complex is True, an extra column is written for the imaginary part
     """
-    header_fmt = "#    row  column %24s %13s %17s"
-    header = header_fmt % ('value [%s]' % unit, 'i,j (row)', 'i,j col')
-    fmt = "%8d%8d%25.16E%7d%7d    %7d%7d"
+    if complex:
+        header_fmt = "#    row  column %24s %24s %13s %17s"
+        header = header_fmt % ('Re(value) [%s]' % unit,
+                               'Im(value) [%s]' % unit,
+                               'i,j (row)', 'i,j col')
+        fmt = "%8d%8d%25.16E%25.16E%7d%7d    %7d%7d"
+    else:
+        header_fmt = "#    row  column %24s %13s %17s"
+        header = header_fmt % ('value [%s]' % unit, 'i,j (row)', 'i,j col')
+        fmt = "%8d%8d%25.16E%7d%7d    %7d%7d"
     with open(outfile, 'w') as out_fh:
         print >> out_fh, comment
         print >> out_fh, header
@@ -374,8 +400,14 @@ def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
             j = sparse_h.row[i_val] + 1
             v = sparse_h.data[i_val]
             v *= conversion_factor * rwa_factor
+            if (not complex):
+                assert(v.imag == 0.0), "matrix has unexpected complex values"
             if (j >= i):
                 ii, ji = red_qnums(i, nq)
                 ij, jj = red_qnums(j, nq)
-                print >> out_fh, fmt % (i, j, v, ii, ji, ij, jj)
+                if complex:
+                    print >> out_fh, fmt % (i, j, v.real, v.imag,
+                                            ii, ji, ij, jj)
+                else:
+                    print >> out_fh, fmt % (i, j, v.real, ii, ji, ij, jj)
 

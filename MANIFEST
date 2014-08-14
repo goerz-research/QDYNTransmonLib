@@ -6,3 +6,6 @@
 ./QDYNTransmonLib/io.py
 ./QDYNTransmonLib/testreduced.py
 ./setup.py
+./setup.py
+./QDYNTransmonLib/hamred.py
+./QDYNTransmonLib/hamfull.py
