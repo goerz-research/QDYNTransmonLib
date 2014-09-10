@@ -304,7 +304,7 @@ def construct_H3(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
                     inv(                                                      \
                       w_c * kron(Iq, Iq)                                      \
                       + kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq)        \
-                      + kron(Iq, chi2(n_qubit, w_1-w_c, g_1, alpha_1))        \
+                      + kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2))        \
                     ), (a - a.H))
 
     return Hdrift, Hctrl2, Hctrlderiv
