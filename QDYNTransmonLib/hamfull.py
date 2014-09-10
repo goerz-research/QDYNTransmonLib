@@ -148,18 +148,7 @@ def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     dispersive approximation
     """
 
-    a = np.matrix(np.zeros(shape=(n_cavity,n_cavity), dtype=np.complex128))
-    for i in xrange(1,n_cavity):
-        a[i-1, i] = np.sqrt(i)
-    nc = a.H * a
-
-    b = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
-    for i in xrange(1,n_qubit):
-        b[i-1, i] = np.sqrt(i)
-    nq = b.H * b
-
-    Iq = np.matrix(np.identity(n_qubit))
-    Ic = np.matrix(np.identity(n_cavity))
+    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
 
     Hdrift =   w_c * tensor(Iq, Iq, nc)       \
             + w_1 * tensor(nq, Iq, Ic)        \
@@ -197,18 +186,7 @@ def construct_H2(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     to derivative of pulse) of the H1 in the approximation of off-resonant pulses
     """
 
-    a = np.matrix(np.zeros(shape=(n_cavity,n_cavity), dtype=np.complex128))
-    for i in xrange(1,n_cavity):
-        a[i-1, i] = np.sqrt(i)
-    nc = a.H * a
-
-    b = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
-    for i in xrange(1,n_qubit):
-        b[i-1, i] = np.sqrt(i)
-    nq = b.H * b
-
-    Iq = np.matrix(np.identity(n_qubit))
-    Ic = np.matrix(np.identity(n_cavity))
+    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
 
     Hdrift =   w_c * tensor(Iq, Iq, nc)       \
             + w_1 * tensor(nq, Iq, Ic)        \
@@ -253,17 +231,8 @@ def construct_H3(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     transform
     """
 
-    a = np.matrix(np.zeros(shape=(n_cavity,n_cavity), dtype=np.complex128))
-    for i in xrange(1,n_cavity):
-        a[i-1, i] = np.sqrt(i)
+    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
 
-    b = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
-    for i in xrange(1,n_qubit):
-        b[i-1, i] = np.sqrt(i)
-    nq = b.H * b
-
-    Iq = np.matrix(np.identity(n_qubit))
-    Ic = np.matrix(np.identity(n_cavity))
     alpha_pol = alpha_polaron(n_qubit, w_c, w_1, w_2, g_1, g_2,
                               alpha_1, alpha_2)
 
