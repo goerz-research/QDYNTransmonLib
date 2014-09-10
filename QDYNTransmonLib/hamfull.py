@@ -140,6 +140,27 @@ def alpha_polaron(n_qubit, delta, Delta1, Delta2, g1, g2, alpha1, alpha2):
     return alpha
 
 
+def construct_Hfull(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
+    g_2):
+    """
+    Return Matrices Hdrift, Hctrl describing the Hamiltonian after the
+    dispersive approximation
+    """
+
+    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
+
+    Hdrift =  w_c * tensor(Iq, Iq, nc)                                        \
+            + w_1 * tensor(nq, Iq, Ic)                                        \
+            + w_2 * tensor(Iq, nq, Ic)                                        \
+            + 0.5 * alpha_1 * tensor(nq*nq - nq, Iq, Ic)                      \
+            + 0.5 * alpha_2 * tensor(Iq, nq*nq - nq, Ic)                      \
+            + g_1 * (tensor(b.H, Iq, a) + tensor(b, Iq, a.H))                 \
+            + g_2 * (tensor(Iq, b.H, a) + tensor(Iq, b, a.H))
+
+    Hctrl =   ( tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H) )
+
+    return Hdrift, Hctrl
+
 
 def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     zeta):
