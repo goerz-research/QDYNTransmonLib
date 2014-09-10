@@ -34,6 +34,29 @@ To write out a Hamiltonian, use e.g.
                           complex=True)
 """
 
+def standard_ops(n_qubit, n_cavity):
+    """
+    Return lowering operators, number operators, and identities for qubit and
+    cavity Hilbert space
+
+    >>> a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
+    """
+    a = np.matrix(np.zeros(shape=(n_cavity,n_cavity), dtype=np.complex128))
+    for i in xrange(1,n_cavity):
+        a[i-1, i] = np.sqrt(i)
+    nc = a.H * a
+
+    b = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
+    for i in xrange(1,n_qubit):
+        b[i-1, i] = np.sqrt(i)
+    nq = b.H * b
+
+    Iq = np.matrix(np.identity(n_qubit))
+    Ic = np.matrix(np.identity(n_cavity))
+
+    return a, b, nq, nc, Iq, Ic
+
+
 def chi1(n, Delta, g, alpha):
     chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
     for i in xrange(0, n):

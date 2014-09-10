@@ -2,6 +2,7 @@
 ./QDYNTransmonLib/PE/__init__.py
 ./QDYNTransmonLib/PE/matthias.py
 ./QDYNTransmonLib/__init__.py
+./QDYNTransmonLib/transforms.py
 ./QDYNTransmonLib/holonomic.py
 ./QDYNTransmonLib/io.py
 ./QDYNTransmonLib/testreduced.py
