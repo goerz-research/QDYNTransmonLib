@@ -6,6 +6,7 @@ import os
 import numpy as np
 import scipy
 from QDYN.units import NumericConverter
+import sys
 
 
 def read_params(config, unit):
@@ -321,7 +322,7 @@ def red_qnums(level_index, nq):
 
 
 def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
-    conversion_factor, unit, complex=False):
+    conversion_factor, unit, complex=False, check_hermitian=True):
     """ Write out numpy matrix in sparse format to outfile
 
         The given 'unit' will be written to the header of outfile, and the
@@ -345,6 +346,15 @@ def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
         header = header_fmt % ('value [%s]' % unit,
                                'i,j,n (row)', 'i,j,n (col)')
         fmt = "%8d%8d%25.16E%7d%7d%7d    %7d%7d%7d"
+    if check_hermitian:
+        for i in xrange(nq*nq*nc):
+            if (h[i,i].imag != 0.0):
+                print >> sys.stderr, "Matrix hast complex entries on diagonal"
+                sys.exit(1)
+            for j in xrange(i+1, nq*nq*nc):
+                if (abs(h[i,j] - h[j,i].conjugate()) > 1.0e-15):
+                    print >> sys.stderr, "Matrix is not Hermitian"
+                    sys.exit(1)
     with open(outfile, 'w') as out_fh:
         print >> out_fh, comment
         print >> out_fh, header
