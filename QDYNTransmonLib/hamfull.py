@@ -193,8 +193,8 @@ def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     lambda_1 = - 2 * g_1 / (w_1 - w_c)
     lambda_2 = - 2 * g_2 / (w_2 - w_c)
 
-    Hctrl =   lambda_1 * ( tensor(b, Iq, Ic) + tensor(Iq, b.H, Ic) ) \
-            + lambda_2 * ( tensor(Iq, b, Ic) + tensor(b.H, Iq, Ic) ) \
+    Hctrl =   lambda_1 * ( tensor(b, Iq, Ic) + tensor(b.H, Iq, Ic) ) \
+            + lambda_2 * ( tensor(Iq, b, Ic) + tensor(Iq, b.H, Ic) ) \
             + ( tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H) )
 
     return Hdrift, Hctrl
@@ -225,22 +225,26 @@ def construct_H2(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     Hctrl2 =   (4.0 / (w_1-w_c)**2 ) \
                    * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
              + (4.0 / (w_2-w_c)**2 ) \
-                   * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
+                   * tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), Ic)
 
     lambda_1 = - 2 * g_1 / (w_1 - w_c)
     lambda_2 = - 2 * g_2 / (w_2 - w_c)
 
-    d1 = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
-    for i in xrange(n_qubit):
-        d1[i, i] = 1.0j / (i * alpha_1 + w_1 - w_c)
-    d2 = np.matrix(np.zeros(shape=(n_qubit,n_qubit), dtype=np.complex128))
-    for i in xrange(n_qubit):
-        d2[i, i] = 1.0j / (i * alpha_2 + w_2 - w_c)
+    Hctrlderiv =    tensor(lambda_1 * 1j                                      \
+                           * inv(alpha_1 * nq + (w_1-w_c)*Iq)                 \
+                           * b, Iq, Ic)                                       \
+                  - tensor(lambda_1 * 1j                                      \
+                           * inv(alpha_1 * nq - alpha_1*Iq + (w_1-w_c)*Iq)    \
+                           * b.H, Iq, Ic)                                     \
+                  + tensor(Iq,                                                \
+                           lambda_2 * 1j                                      \
+                           * inv(alpha_2 * nq + (w_2-w_c)*Iq)                 \
+                           * b, Ic)                                           \
+                  - tensor(Iq,                                                \
+                           lambda_2 * 1j                                      \
+                           * inv(alpha_2 * nq - alpha_2*Iq + (w_2-w_c)*Iq)    \
+                           * b.H, Ic)
 
-    Hctrlderiv =    tensor(lambda_1 * d1   * b, Iq, Ic)   \
-                  + tensor(lambda_1 * d1.H * b.H, Iq, Ic) \
-                  + tensor(Iq, lambda_2 * d2   * b, Ic)   \
-                  + tensor(Iq, lambda_2 * d2.H * b.H, Ic)
 
     return Hdrift, Hctrl, Hctrl2, Hctrlderiv
 
@@ -265,37 +269,40 @@ def construct_H3(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
             + tensor(Iq, chi1(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
             + zeta * tensor(nq, nq, Ic)
 
+    chi2_q1 = kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq)
+    chi2_q2 = kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2))
+
     Hctrl2 =    w_c * kron(alpha_pol.H * alpha_pol, Ic) \
-             + kron(kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq) \
-                    * alpha_pol.H * alpha_pol, Ic) \
-             + kron(kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2)) \
-                    * alpha_pol.H * alpha_pol, Ic) \
+             - kron(chi2_q1 * alpha_pol.H * alpha_pol, Ic) \
+             - kron(chi2_q2 * alpha_pol.H * alpha_pol, Ic) \
              + (4.0 / (w_1-w_c)**2 ) \
                    * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
              + (4.0 / (w_2-w_c)**2 ) \
-                   * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
+                   * tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), Ic)
 
     lambda_1 = - 2 * g_1 / (w_1 - w_c)
     lambda_2 = - 2 * g_2 / (w_2 - w_c)
 
-    Hctrlderiv =    tensor(1.0j * lambda_1                                    \
-                           * inv(alpha_1*nq + (w_1-w_c)*Iq)                   \
-                           * b,  Iq, Ic)                                      \
-                  + tensor(-1.0j * lambda_1                                   \
-                           * (inv(alpha_1*nq + (w_1-w_c)*Iq)).H               \
-                           * b.H,  Iq, Ic)                                    \
-                  + tensor(Iq, 1.0j * lambda_2                                \
-                               * inv(alpha_2*nq + (w_2-w_c)*Iq)               \
-                               * b,  Ic)                                      \
-                  + tensor(Iq, -1.0j * lambda_2                               \
-                               * (inv(alpha_2*nq + (w_2-w_c)*Iq)).H           \
-                               * b.H,  Ic)                                    \
+    Hctrlderiv =    tensor(lambda_1 * 1j                                      \
+                           * inv(alpha_1 * nq + (w_1-w_c)*Iq)                 \
+                           * b, Iq, Ic)                                       \
+                  - tensor(lambda_1 * 1j                                      \
+                           * inv(alpha_1 * nq - alpha_1*Iq + (w_1-w_c)*Iq)    \
+                           * b.H, Iq, Ic)                                     \
+                  + tensor(Iq,                                                \
+                           lambda_2 * 1j                                      \
+                           * inv(alpha_2 * nq + (w_2-w_c)*Iq)                 \
+                           * b, Ic)                                           \
+                  - tensor(Iq,                                                \
+                           lambda_2 * 1j                                      \
+                           * inv(alpha_2 * nq - alpha_2*Iq + (w_2-w_c)*Iq)    \
+                           * b.H, Ic)                                         \
                   - kron(                                                     \
                     inv(                                                      \
                       w_c * kron(Iq, Iq)                                      \
                       + kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq)        \
                       + kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2))        \
-                    ), (a - a.H))
+                    ), (a + a.H))
 
     return Hdrift, Hctrl2, Hctrlderiv
 
