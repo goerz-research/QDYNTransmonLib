@@ -275,6 +275,7 @@ def construct_H3(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
     Hctrl2 =    w_c * kron(alpha_pol.H * alpha_pol, Ic) \
              + kron(chi2_q1 * alpha_pol.H * alpha_pol, Ic) \
              + kron(chi2_q2 * alpha_pol.H * alpha_pol, Ic) \
+             + kron(alpha_pol + alpha_pol.H, Ic) \
              + (4.0 / (w_1-w_c)**2 ) \
                    * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
              + (4.0 / (w_2-w_c)**2 ) \
