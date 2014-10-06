@@ -11,9 +11,9 @@ functionals or other quantities in his way.
 import numpy as np
 
 
-def read(datafile):
+def read_transmon_U(datafile):
     """
-    Read datafile of optimized gates from Matthias, return numpy array of
+    Read datafile of optimized transmon gates from Matthias, return numpy array of
     times, array of numpy matrices U. The data file looks like this:
 
             #T/ns U11       U12     U13     U14     U21     U22     U23     U24     U31     U32     U33     U34     U41     U42     U43     U44
