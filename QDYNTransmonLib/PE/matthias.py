@@ -8,6 +8,7 @@ functionals or other quantities in his way.
 
 
 """
+import re
 import numpy as np
 
 
@@ -47,6 +48,74 @@ def read_transmon_U(datafile):
     return time, Us
 
 
+def read_charge_U(datafile):
+    """
+    Read datafile of optimized charge qubit from matthias, return numpy array
+    of Energy values, array of numpy matrices U. The data file looks like this:
+
+        EC=   5.00000000000000      gate:(U11,U12,...U44)
+        (-0.581828383772487,0.614092161645137)
+        (0.188816444968742,-4.585551267767978E-002)
+        (0.188871025101700,-4.738246638562636E-002)
+        (2.866314873143958E-002,1.148149326769822E-002)
+        (0.195453266916402,2.806467967860098E-002)
+        (-0.113621885900112,0.593896789791336)
+        (0.724156875339910,8.611705140340264E-002)
+        (-2.487567222537855E-002,2.257985020275941E-002)
+        (0.194868672076659,2.947685320540565E-002)
+        (0.723374295657455,9.390147034776704E-002)
+        (-0.113589129358520,0.593875210310781)
+        (-2.516673176216438E-002,2.115189164141489E-002)
+        (2.005791059963908E-002,1.905795933762889E-002)
+        (-2.315918808625523E-002,1.852283751689890E-002)
+        (-2.322299108817379E-002,1.998264485703392E-002)
+        (0.710790983664845,0.685603443871661)
+        EC=   10.0000000000000      gate:(U11,U12,...U44)
+        (0.609559462597988,-0.729508005740185)
+        ...
+
+        Note that EC is given for T=1. For the optimization EC*T is relevant.
+        In the presentation, we prefer to set EC to a constant (1 GHz) and vary
+        the gate duration instead. Hence, the value of EC is converted to time.
+
+    """
+    time = []
+    Us = []
+    def get_time(line):
+        m = re.match(r'EC\s*=\s*([0-9.]+)\s+gate:.*', line)
+        return float(m.group(1))
+    U = None
+    i = j = 0
+    with open(datafile) as in_fh:
+        for line in in_fh:
+            line = line.strip()
+            if line.startswith('EC'):
+                # header line
+                time.append(get_time(line))
+                if U is not None:
+                    # check that previous gate hase been read completely...
+                    assert i == 4, "Incomplete rows"
+                    assert j == 0, "Incomplete cols"
+                    # ... and add it to the array
+                    Us.append(U)
+                # Initialize new gate
+                U = np.zeros((4,4), dtype=np.complex128)
+                i = 0
+                j = 0
+            else:
+                # not a header line -> read gate entries
+                for complex_value in re.findall(
+                r'\([0-9Ee.+-]+\s*,\s*[0-9Ee.+-]+\)', line):
+                    x, y = complex_value[1:-1].split(',')
+                    U[i,j] = complex(float(x), float(y))
+                    # index for next entry
+                    j += 1
+                    if j > 3:
+                        i += 1
+                        j = 0
+    return np.array(time), Us
+
+
 def gs_closest_unitary(U):
     """
     Calculate a "closest unitary" by Gram-Schmidt Orthonormalization
@@ -55,7 +124,7 @@ def gs_closest_unitary(U):
     >> we are currently summarizing the results of Giulia's calculations into
     >> figures. In order to compare to your calculations, we have two
     >> questions:
-    >> - How to you determine \ilde U (the projection of the actual U onto
+    >> - How to you determine tilde U (the projection of the actual U onto
     >>         SU(4))?
     > I calculate tilde U by first projecting U on the logical subspace. Then
     > I take the row vectors, and perform Gram-Schimdt orthonormalization
