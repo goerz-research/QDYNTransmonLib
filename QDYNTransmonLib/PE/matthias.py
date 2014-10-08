@@ -89,6 +89,8 @@ def read_charge_U(datafile):
     with open(datafile) as in_fh:
         for line in in_fh:
             line = line.strip()
+            if line.startswith("#"):
+                continue # skip comment lines
             if line.startswith('EC'):
                 # header line
                 time.append(get_time(line))
@@ -113,6 +115,12 @@ def read_charge_U(datafile):
                     if j > 3:
                         i += 1
                         j = 0
+        # Write the last gate
+        assert i == 4, "Incomplete rows"
+        assert j == 0, "Incomplete cols"
+        # ... and add it to the array
+        Us.append(U)
+    assert len(time) == len(Us), "Did not get gate for all time points"
     return np.array(time), Us
 
 
