@@ -10,6 +10,33 @@ functionals or other quantities in his way.
 """
 import re
 import numpy as np
+import QDYN.local_invariants as LI
+from scipy.linalg import norm
+
+def Jlec(U, Utilde, O):
+    """Local equivalence class functional in c-space"""
+    c1, c2, c3    = LI.c1c2c3(U)
+    c1O, c2O, c3O = LI.c1c2c3(O)
+    F  = np.cos(np.pi * np.abs(c1O - c1) / 2.0)
+    F *= np.cos(np.pi * np.abs(c2O - c2) / 2.0)
+    F *= np.cos(np.pi * np.abs(c3O - c3) / 2.0)
+    F -= norm(U - Utilde) / 4.0
+    return 1.0-F
+
+
+def Jpe(U, Utilde):
+    """PE-functional in c-space"""
+    c1, c2, c3    = LI.c1c2c3(U)
+    if (c1 + c2 <= 0.5):
+        F = np.cos(np.pi*(c1 + c2 - 0.5) / 4.0)**2
+    elif (c2 + c3 >= 0.5):
+        F = np.cos(np.pi*(c2 + c3 - 0.5) / 4.0)**2
+    elif (c1 - c2 >= 0.5):
+        F = np.cos(np.pi*(c1 - c2 - 0.5) / 4.0)**2
+    else:
+        F = 1.0
+    F -= norm(U - Utilde) / 4.0
+    return 1.0 - F
 
 
 def read_transmon_U(datafile):
