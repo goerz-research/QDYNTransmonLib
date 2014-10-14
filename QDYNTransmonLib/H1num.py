@@ -1,4 +1,4 @@
-from QDYNTransmonLib.hamfull import tensor
+from QDYNTransmonLib.hamfull import tensor, standard_ops
 import numpy as np
 import numpy.linalg
 from QDYNTransmonLib.io import full_qnums
@@ -81,6 +81,8 @@ def get_H_tilde(HD, n_qubit, n_cavity, w_1, w_2, w_c, alpha_1, alpha_2):
     n_cavity: number of cavity levels
     """
     zeta = get_zeta(HD)
+    N = n_qubit * n_qubit * n_cavity
+    b = np.zeros(N, dtype=np.complex128)
     for row in xrange(N):
         i, j, n = full_qnums(row+1, n_qubit, n_cavity)
         b[row] = HD.get(i, j, n) \
