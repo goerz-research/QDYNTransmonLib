@@ -72,13 +72,6 @@ def chi2(n, Delta, g, alpha):
     return chi
 
 
-def chi_num(nq, taylor_coeffs):
-    chi = taylor_coeffs[0] * nq**0
-    for k, a in enumerate(taylor_coeffs):
-        chi += a * nq**k
-    return chi
-
-
 def chi3(n, Delta, g, alpha, offset=0):
     chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
     for i in xrange(0+offset, n+offset):
@@ -196,39 +189,6 @@ def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
             + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1, 2), Iq, a.H*a.H*a*a)\
             + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2, 2), a.H*a.H*a*a)\
             + zeta * tensor(nq, nq, Ic)
-
-    lambda_1 = - 2 * g_1 / (w_1 - w_c)
-    lambda_2 = - 2 * g_2 / (w_2 - w_c)
-
-    Hctrl =   lambda_1 * ( tensor(b, Iq, Ic) + tensor(b.H, Iq, Ic) ) \
-            + lambda_2 * ( tensor(Iq, b, Ic) + tensor(Iq, b.H, Ic) ) \
-            + ( tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H) )
-
-    return Hdrift, Hctrl
-
-
-def construct_H1_num(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
-    g_2, zeta, chi_coeffs):
-    """
-    Return Matrices Hdrift, Hctrl describing the Hamiltonian after the
-    dispersive approximation
-    """
-
-    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
-
-    N_taylor = len(chi_coeffs) / (2*2) # two qubits, two chi's per qubit
-
-    Hdrift =                                                               \
-        w_c * tensor(Iq, Iq, nc)                                           \
-      + w_1 * tensor(nq, Iq, Ic)                                           \
-      + w_2 * tensor(Iq, nq, Ic)                                           \
-      + 0.5 * alpha_1 * tensor(nq*nq - nq, Iq, Ic)                         \
-      + 0.5 * alpha_2 * tensor(Iq, nq*nq - nq, Ic)                         \
-      + tensor(chi_num(nq, chi_coeffs[0:N_taylor]), Iq, Ic)                \
-      + tensor(Iq, chi_num(nq, chi_coeffs[N_taylor:2*N_taylor]), Ic)       \
-      + tensor(chi_num(nq, chi_coeffs[2*N_taylor:3*N_taylor]), Iq, nc)     \
-      + tensor(Iq, chi_num(nq, chi_coeffs[3*N_taylor:4*N_taylor]), nc)     \
-      + zeta * tensor(nq, nq, Ic)
 
     lambda_1 = - 2 * g_1 / (w_1 - w_c)
     lambda_2 = - 2 * g_2 / (w_2 - w_c)
