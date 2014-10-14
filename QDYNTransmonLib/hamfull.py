@@ -72,11 +72,11 @@ def chi2(n, Delta, g, alpha):
     return chi
 
 
-def chi_num(n, taylor_coeffs):
-    chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
-    for i in xrange(0, n):
-        for k, a in enumerate(taylor_coeffs):
-            chi[i,i] += i**k * a
+def chi_num(nq, taylor_coeffs):
+    chi = taylor_coeffs[0] * nq**0
+    for k, a in enumerate(taylor_coeffs):
+        chi += a * nq**k
+    return chi
 
 
 def chi3(n, Delta, g, alpha, offset=0):
@@ -216,7 +216,7 @@ def construct_H1_num(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
 
     a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
 
-    N_taylor = len(chi_coeffs) / (2*2)
+    N_taylor = len(chi_coeffs) / (2*2) # two qubits, two chi's per qubit
 
     Hdrift =                                                               \
         w_c * tensor(Iq, Iq, nc)                                           \
