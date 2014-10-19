@@ -13,6 +13,48 @@ import numpy as np
 import QDYN.local_invariants as LI
 from scipy.linalg import norm
 
+def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2):
+    """
+    Construct the charge qubit Hamiltonian for two charge qubits consisting of
+    n_levels levels, with charging energy E_C
+
+    If n_pulses == 1, return Hdrift, Hctrl matrices
+
+    If n_pulses == 2, return Hdrift, Hctrl_J, Hctrl_JJ matrices
+    """
+
+    drift_1q = np.matrix(np.zeros(shape=(n_levels,n_levels),
+                         dtype=np.complex128))
+    for n in xrange(n_levels):
+        drift_1q[n,n] = E_C * (n - ng)**2
+
+    ctrl_1q  = np.matrix(np.zeros(shape=(n_levels,n_levels),
+                         dtype=np.complex128))
+    for n in xrange(n_levels):
+        ctrl_1q[n,n+1] = E_C * (n - ng)**2
+
+    for n in xrange(n_levels-1):
+        drift_1q[n,n+1] = -0.5
+        drift_1q[n+1,n] = -0.5
+
+    Id = np.matrix(np.identity(n_levels))
+
+    Hdrift = np.kron(drift_1q, Id) + np.kron(Id, drift_1q)
+
+    Hctrl = np.kron(ctrl_1q, Id) + np.kron(Id, ctrl_1q)
+
+    if n_pulses == 1:
+        Hctrl += np.kron(ctrl_1q, ctrl_1q)
+        return Hdrift, Hctrl
+    elif n_pulses == 2:
+        Hctrl_J = Hctrl
+        Hctrl_JJ = np.kron(ctrl_1q, ctrl_1q)
+        return Hdrift, Hctrl_J, Hctrl_JJ
+    else:
+        raise ValueError("n_pulses must be 1 or 2")
+
+
+
 def Jlec(U, Utilde, O):
     """Local equivalence class functional in c-space"""
     c1, c2, c3    = LI.c1c2c3(U)
