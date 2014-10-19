@@ -23,32 +23,35 @@ def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2):
     If n_pulses == 2, return Hdrift, Hctrl_J, Hctrl_JJ matrices
     """
 
+    Id = np.matrix(np.identity(n_levels))
+
     drift_1q = np.matrix(np.zeros(shape=(n_levels,n_levels),
                          dtype=np.complex128))
     for n in xrange(n_levels):
-        drift_1q[n,n] = E_C * (n - ng)**2
+        drift_1q[n,n] = E_C * (float(n) - ng)**2
+    drift_1q += -0.25 * E_C * Id # shift \Ket{0} to zero
 
     ctrl_1q  = np.matrix(np.zeros(shape=(n_levels,n_levels),
                          dtype=np.complex128))
-    for n in xrange(n_levels):
-        ctrl_1q[n,n+1] = E_C * (n - ng)**2
-
     for n in xrange(n_levels-1):
-        drift_1q[n,n+1] = -0.5
-        drift_1q[n+1,n] = -0.5
+        ctrl_1q[n,n+1] = 1.0
+        ctrl_1q[n+1,n] = 1.0
 
-    Id = np.matrix(np.identity(n_levels))
+    Hdrift = (np.kron(drift_1q, Id) + np.kron(Id, drift_1q))
 
-    Hdrift = np.kron(drift_1q, Id) + np.kron(Id, drift_1q)
-
-    Hctrl = np.kron(ctrl_1q, Id) + np.kron(Id, ctrl_1q)
+    Hctrl_J  = -0.5 * (np.kron(ctrl_1q, Id) + np.kron(Id, ctrl_1q))
+    Hctrl_JJ = np.matrix(np.zeros(shape=(n_levels**2,n_levels**2),
+                         dtype=np.complex128))
+    level = lambda i, j: i * n_levels + j
+    for i in xrange(n_levels-1):
+        for j in xrange(n_levels-1):
+            Hctrl_JJ[level(i,j+1), level(i+1,j)] = 0.5
+            Hctrl_JJ[level(i+1,j), level(i,j+1)] = 0.5
 
     if n_pulses == 1:
-        Hctrl += np.kron(ctrl_1q, ctrl_1q)
+        Hctrl = Hctrl_J + Hctrl_JJ
         return Hdrift, Hctrl
     elif n_pulses == 2:
-        Hctrl_J = Hctrl
-        Hctrl_JJ = np.kron(ctrl_1q, ctrl_1q)
         return Hdrift, Hctrl_J, Hctrl_JJ
     else:
         raise ValueError("n_pulses must be 1 or 2")

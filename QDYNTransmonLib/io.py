@@ -17,7 +17,7 @@ def read_params(config, unit):
     result = {}
 
     float_params = ['w_c', 'w_1', 'w_2', 'w_d', 'alpha_1', 'alpha_2', 'g_1',
-                    'g_2', 'zeta', 'kappa']
+                    'g_2', 'zeta', 'kappa', 'E_C']
     int_params = ['n_qubit', 'n_cavity']
 
     float_rxs = {}
