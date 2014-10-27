@@ -311,14 +311,15 @@ def full_qnums(level_index, n_qubit, n_cavity):
     return (i, j, n)
 
 
-def red_qnums(level_index, nq):
+def red_qnums(level_index, nq, n_start=0):
     """
     Given 1-based level_index, return tuple of 0-based quantum numbers (i, j)
+    (or n_start based if given)
     """
     l = level_index - 1
     i = l / nq
     j = l - i*nq
-    return (i,j)
+    return (i+n_start,j+n_start)
 
 
 def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
@@ -378,7 +379,7 @@ def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
 
 
 def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
-    conversion_factor, unit, complex=False):
+    conversion_factor, unit, complex=False, n_start=0):
     """ Write out numpy matrix in sparse format to outfile
 
         The given 'unit' will be written to the header of outfile, and the
@@ -390,6 +391,8 @@ def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
         receive an rwa_factor for 1 / 2^n
 
         If complex is True, an extra column is written for the imaginary part
+
+        If n_start is given, start counting levels at n_start instead of zero
     """
     if complex:
         header_fmt = "#    row  column %24s %24s %13s %17s"
@@ -413,8 +416,8 @@ def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
             if (not complex):
                 assert(v.imag == 0.0), "matrix has unexpected complex values"
             if (j >= i):
-                ii, ji = red_qnums(i, nq)
-                ij, jj = red_qnums(j, nq)
+                ii, ji = red_qnums(i, nq, n_start)
+                ij, jj = red_qnums(j, nq, n_start)
                 if complex:
                     print >> out_fh, fmt % (i, j, v.real, v.imag,
                                             ii, ji, ij, jj)

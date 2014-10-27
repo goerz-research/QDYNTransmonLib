@@ -13,7 +13,8 @@ import numpy as np
 import QDYN.local_invariants as LI
 from scipy.linalg import norm
 
-def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2):
+def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2,
+    negative_charge=False):
     """
     Construct the charge qubit Hamiltonian for two charge qubits consisting of
     n_levels levels, with charging energy E_C
@@ -21,15 +22,48 @@ def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2):
     If n_pulses == 1, return Hdrift, Hctrl matrices
 
     If n_pulses == 2, return Hdrift, Hctrl_J, Hctrl_JJ matrices
+
+    If negative_charge == True, distribute n_levels between positive and
+    negative charge numbers
+    numbers
     """
 
     Id = np.matrix(np.identity(n_levels))
 
     drift_1q = np.matrix(np.zeros(shape=(n_levels,n_levels),
                          dtype=np.complex128))
-    for n in xrange(n_levels):
-        drift_1q[n,n] = E_C * (float(n) - ng)**2
-    drift_1q += -0.25 * E_C * Id # shift \Ket{0} to zero
+    n_min = 0
+    n_max = n_levels-1
+    if negative_charge:
+        while n_min > -1 * (n_levels - 2)/2:
+            n_min += -1
+            n_max += -1
+
+    def inclusive_range(n_min, n_max):
+        return xrange(n_min, n_max+1)
+
+    l = 0
+    E0 = E_C * (0.0 - ng)**2
+    E1 = E_C * (1.0 - ng)**2
+    E01 = E1 - E0
+    for n in inclusive_range(n_min, n_max):
+        drift_1q[l,l] = E_C * (float(n) - ng)**2
+        l += 1
+    drift_1q += -E0 * Id # shift \Ket{0} to zero
+    # go to the RWA (drift)
+    assert ((ng == 0.5) or (ng == 1.0)), "Don't know how to do RWA"
+    print "E01 = ", E01 # DEBUG
+    l = 0
+    for n in inclusive_range(n_min, n_max):
+        old_val = drift_1q[l,l] # DEBUG
+        if n <= 0:
+            shift = (n - ng)*E01
+        else:
+            shift = -(n - ng)*E01
+        shift += E01 # so that 0 stays at zero
+        drift_1q[l,l] -= shift
+        print "shifted level %d (n=%d) by %f, %f -> %f" % (l, n, shift, old_val, drift_1q[l,l]) # DEBUG
+        l += 1
 
     ctrl_1q  = np.matrix(np.zeros(shape=(n_levels,n_levels),
                          dtype=np.complex128))
@@ -47,6 +81,9 @@ def construct_charge_ham(n_levels, E_C, ng=0.5, n_pulses=2):
         for j in xrange(n_levels-1):
             Hctrl_JJ[level(i,j+1), level(i+1,j)] = 0.5
             Hctrl_JJ[level(i+1,j), level(i,j+1)] = 0.5
+    # go to the RWA (control)
+    Hctrl_J  *= 0.5
+    Hctrl_JJ *= 0.5
 
     if n_pulses == 1:
         Hctrl = Hctrl_J + Hctrl_JJ
