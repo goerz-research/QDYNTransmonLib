@@ -74,7 +74,10 @@ def chi_num(nq, taylor_coeffs):
 def get_H_tilde(HD, n_qubit, n_cavity, w_1, w_2, w_c, alpha_1, alpha_2):
     """
     Return the entries of the diagonalized Hamltonian, without energy levels
-    and the zeta terms. Right hand side of the equation system
+    and the zeta terms. Right hand side of the equation system.
+
+    Also return array of indicies of lines from the equation system that should
+    be dropped, since they require undefined quantum numbers
 
     HD      : Diagonalized Hamiltonian
     n_qubit : number of qubit levels
@@ -83,15 +86,26 @@ def get_H_tilde(HD, n_qubit, n_cavity, w_1, w_2, w_c, alpha_1, alpha_2):
     zeta = get_zeta(HD)
     N = n_qubit * n_qubit * n_cavity
     b = np.zeros(N, dtype=np.complex128)
+    b = []
+    rows_to_delete = []
     for row in xrange(N):
         i, j, n = full_qnums(row+1, n_qubit, n_cavity)
-        b[row] = HD.get(i, j, n) \
-                 - (  (w_1 + 0.5*alpha_1*(i-1)) * i
-                    + (w_2 + 0.5*alpha_2*(j-1)) * j
-                    + w_c * n
-                    + zeta * i * j
-                 )
-    return b
+        try:
+            hval = HD.get(i, j, n)
+            b.append(hval \
+                    - (  (w_1 + 0.5*alpha_1*(i-1)) * i
+                        + (w_2 + 0.5*alpha_2*(j-1)) * j
+                        + w_c * n
+                        + zeta * i * j
+                    ))
+        except KeyError:
+            # For higher levels, the eigenstates can no longer directly be
+            # associated with a set of quantum numbers. That means that not all
+            # quantum numbers might be present in n HD. If the lookup fails,
+            # the best thing to do is to disregard that condition from the
+            # equation system entirely
+            rows_to_delete.append(row)
+    return (np.array(b, dtype=np.complex128), rows_to_delete)
 
 
 def get_coeff_matrix(n_qubit, n_cavity, N_Taylor):
@@ -141,7 +155,10 @@ def get_chi_coeffs(HD, params, N_taylor):
     C = get_coeff_matrix(n_qubit, n_cavity, N_taylor)
 
     # right hand side (Hamiltonian with known terms subtracted)
-    b = get_H_tilde(HD, n_qubit, n_cavity, w_1, w_2, w_c, alpha_1, alpha_2)
+    b, rows_to_delete = get_H_tilde(HD, n_qubit, n_cavity, w_1, w_2, w_c,
+                                    alpha_1, alpha_2)
+
+    C = np.delete(C, rows_to_delete, axis=0)
 
     # Find coefficients that best match the Hamiltonian, using least-squares
     chi_coeffs, residuals, rank, singular_values = numpy.linalg.lstsq(C, b)

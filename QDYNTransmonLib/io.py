@@ -80,6 +80,7 @@ class FullHamLevels():
         in zip(self.level_i, self.level_j, self.level_n, self.E):
             if (ii == i) and (jj == j) and (nn == n):
                 return E
+        raise KeyError("(%d, %d, %d) not found" % (i, j, n))
 
     def print_dressed_params(self):
         """
