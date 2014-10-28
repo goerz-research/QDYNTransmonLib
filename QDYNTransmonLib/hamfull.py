@@ -163,10 +163,12 @@ def construct_Hfull(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
 
 
 def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
-    zeta):
+    zeta, use_chi3=True):
     """
     Return Matrices Hdrift, Hctrl describing the Hamiltonian after the
     dispersive approximation
+
+    If use_chi3 is given as False, set chi3 to zero
     """
 
     a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
@@ -180,15 +182,18 @@ def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
             + tensor(Iq, chi1(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
             + tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc) \
             + tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), nc) \
-            + 4 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc) \
-            + 4 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), nc) \
-            + 2 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic) \
-            + 2 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
-            + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, a.H*a.H*a*a) \
-            + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), a.H*a.H*a*a) \
+            + zeta * tensor(nq, nq, Ic)
+
+    if use_chi3:
+        Hdrift +=                                                             \
+              4 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc)        \
+            + 4 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), nc)        \
+            + 2 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)        \
+            + 2 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), Ic)        \
+            + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, a.H*a.H*a*a)   \
+            + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), a.H*a.H*a*a)   \
             + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1, 2), Iq, a.H*a.H*a*a)\
             + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2, 2), a.H*a.H*a*a)\
-            + zeta * tensor(nq, nq, Ic)
 
     lambda_1 = - 2 * g_1 / (w_1 - w_c)
     lambda_2 = - 2 * g_2 / (w_2 - w_c)
