@@ -65,6 +65,8 @@ def construct_H1_num(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
 
 
 def chi_num(nq, taylor_coeffs):
+    assert len(nq.shape) == 2, \
+    "nq must be the number operator on the qubit subspace"
     chi = taylor_coeffs[0] * nq**0
     for k, a in enumerate(taylor_coeffs):
         chi += a * nq**k
