@@ -323,6 +323,21 @@ def red_qnums(level_index, nq, n_start=0):
     return (i+n_start,j+n_start)
 
 
+def write_chi(chi, outfile):
+    """
+    Write the given diagonal chi matrix to outfile
+
+    The entries are in the default energy unit (probably GHz)
+    """
+    N = chi.shape[0]
+    with open(outfile, 'w') as out:
+        print >> out, "# %3s%25s" % ("i", "val [energy]")
+        for i in xrange(N):
+            E = chi[i,i]
+            assert E.imag == 0.0, "All chi entries must be real"
+            print >> out, "%5d%25.16E" % (i+1, E.real)
+
+
 def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
     conversion_factor, unit, complex=False, check_hermitian=True):
     """ Write out numpy matrix in sparse format to outfile
