@@ -10,7 +10,7 @@ from multiprocessing.dummy import Pool
 import numpy as np
 from QDYN.pulse import Pulse, tgrid_from_config, blackman
 from QDYN.visualization import show_U_arrow
-from QDYN.io import read_U
+from QDYN.io import read_2q_gate as read_U
 import QDYN.local_invariants as LI
 from QDYNTransmonLib.holonomic import generate_ham_files
 from QDYNTransmonLib.io import FullHamLevels, RedHamLevels, read_params
