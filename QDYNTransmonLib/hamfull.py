@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import kron
 """
 Routines for constructing various Hamiltonians in the "full" qubit-qubit-cavity
 Hilbert space
@@ -57,30 +56,6 @@ def standard_ops(n_qubit, n_cavity):
     return a, b, nq, nc, Iq, Ic
 
 
-def chi1(n, Delta, g, alpha):
-    chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
-    for i in xrange(0, n):
-        chi[i,i] = i * g**2 / ( (i-1)*alpha + Delta )
-    return chi
-
-
-def chi2(n, Delta, g, alpha):
-    chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
-    for i in xrange(0, n):
-        chi[i,i] =    (g**2 * (alpha - Delta))                                \
-                    / ( ((i-1)*alpha + Delta)  * (i*alpha + Delta)  )
-    return chi
-
-
-def chi3(n, Delta, g, alpha, offset=0):
-    chi = np.matrix(np.zeros(shape=(n,n), dtype=np.complex128))
-    for i in xrange(0+offset, n+offset):
-        numer = (alpha**2 * g**4 * i * (i-1)) / ((2*i-3)*alpha + 2*Delta)
-        denom = ((i-1)*alpha + Delta)**2 * ((i-2)*alpha + Delta)**2
-        chi[i-offset,i-offset] =  numer / denom
-    return chi
-
-
 def tensor(a, b, c):
     """ Qubit-Qubit-Cavity tensor product """
     return np.kron(a, np.kron(b, c))
@@ -118,28 +93,6 @@ def write_logical_eigenstates(n_qubit, n_cavity):
                               % (p00, p01, p10, p11, i, j, n))
 
 
-def alpha_polaron(n_qubit, delta, Delta1, Delta2, g1, g2, alpha1, alpha2):
-    """
-    Polaron operator (in two-qubit space, i.e. dimension n_qubit * n_qubit)
-
-    n_qubit: number of qubit levels
-    delta  : detuning of cavity from the drive
-    Delta1 : detuning of qubit 1 from cavity (w_1 - w_c)
-    Delta2 : detuning of qubit 2 from cavity (w_2 - w_c)
-    g1     : coupling qubit 1 to cavity
-    g2     : coupling qubit 2 to cavity
-    alpha1 : anharmonicity qubit 1
-    alpha2 : anharmonicity qubit 2
-    """
-    Iq = np.matrix(np.identity(n_qubit))
-    chi_q1 = chi2(n_qubit, Delta1, g1, alpha1)
-    chi_q2 = chi2(n_qubit, Delta2, g2, alpha2)
-    alpha = kron(chi_q1, Iq) + kron(Iq, chi_q2) + delta * kron(Iq, Iq)
-    for i in xrange(n_qubit * n_qubit):
-        alpha[i,i] = -1.0 / alpha[i,i]
-    return alpha
-
-
 def construct_Hfull(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
     g_2):
     """
@@ -160,159 +113,4 @@ def construct_Hfull(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1,
     Hctrl =   ( tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H) )
 
     return Hdrift, Hctrl
-
-
-def construct_H1(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
-    zeta, use_chi3=True):
-    """
-    Return Matrices Hdrift, Hctrl describing the Hamiltonian after the
-    dispersive approximation
-
-    If use_chi3 is given as False, set chi3 to zero
-    """
-
-    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
-
-    Hdrift =   w_c * tensor(Iq, Iq, nc)       \
-            + w_1 * tensor(nq, Iq, Ic)        \
-            + w_2 * tensor(Iq, nq, Ic)        \
-            + 0.5 * alpha_1 * tensor(nq*nq - nq, Iq, Ic) \
-            + 0.5 * alpha_2 * tensor(Iq, nq*nq - nq, Ic) \
-            + tensor(chi1(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic) \
-            + tensor(Iq, chi1(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
-            + tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc) \
-            + tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), nc) \
-            + zeta * tensor(nq, nq, Ic)
-
-    if use_chi3:
-        Hdrift +=                                                             \
-              4 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc)        \
-            + 4 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), nc)        \
-            + 2 * tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)        \
-            + 2 * tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), Ic)        \
-            + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1), Iq, a.H*a.H*a*a)   \
-            + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2), a.H*a.H*a*a)   \
-            + tensor(chi3(n_qubit, w_1-w_c, g_1, alpha_1, 2), Iq, a.H*a.H*a*a)\
-            + tensor(Iq, chi3(n_qubit, w_2-w_c, g_2, alpha_2, 2), a.H*a.H*a*a)\
-
-    lambda_1 = - 2 * g_1 / (w_1 - w_c)
-    lambda_2 = - 2 * g_2 / (w_2 - w_c)
-
-    Hctrl =   lambda_1 * ( tensor(b, Iq, Ic) + tensor(b.H, Iq, Ic) ) \
-            + lambda_2 * ( tensor(Iq, b, Ic) + tensor(Iq, b.H, Ic) ) \
-            + ( tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H) )
-
-    return Hdrift, Hctrl
-
-
-def construct_H2(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
-    zeta):
-    """
-    Return matrices Hdrift, Hctrl, Hctrl2 (Stark shift), Hctrlderiv (coupling
-    to derivative of pulse) of the H1 in the approximation of off-resonant pulses
-    """
-
-    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
-
-    Hdrift =   w_c * tensor(Iq, Iq, nc)       \
-            + w_1 * tensor(nq, Iq, Ic)        \
-            + w_2 * tensor(Iq, nq, Ic)        \
-            + 0.5 * alpha_1 * tensor(nq*nq - nq, Iq, Ic) \
-            + 0.5 * alpha_2 * tensor(Iq, nq*nq - nq, Ic) \
-            + tensor(chi1(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic) \
-            + tensor(Iq, chi1(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
-            + tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc) \
-            + tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), nc) \
-            + zeta * tensor(nq, nq, Ic)
-
-    Hctrl = tensor(Iq, Iq, a) + tensor(Iq, Iq, a.H)
-
-    Hctrl2 =   (4.0 / (w_1-w_c)**2 ) \
-                   * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
-             + (4.0 / (w_2-w_c)**2 ) \
-                   * tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), Ic)
-
-    lambda_1 = - 2 * g_1 / (w_1 - w_c)
-    lambda_2 = - 2 * g_2 / (w_2 - w_c)
-
-    Hctrlderiv =    tensor(lambda_1 * 1j                                      \
-                           * inv(alpha_1 * nq + (w_1-w_c)*Iq)                 \
-                           * b, Iq, Ic)                                       \
-                  - tensor(lambda_1 * 1j                                      \
-                           * inv(alpha_1 * nq - alpha_1*Iq + (w_1-w_c)*Iq)    \
-                           * b.H, Iq, Ic)                                     \
-                  + tensor(Iq,                                                \
-                           lambda_2 * 1j                                      \
-                           * inv(alpha_2 * nq + (w_2-w_c)*Iq)                 \
-                           * b, Ic)                                           \
-                  - tensor(Iq,                                                \
-                           lambda_2 * 1j                                      \
-                           * inv(alpha_2 * nq - alpha_2*Iq + (w_2-w_c)*Iq)    \
-                           * b.H, Ic)
-
-
-    return Hdrift, Hctrl, Hctrl2, Hctrlderiv
-
-
-def construct_H3(n_qubit, n_cavity, w_c, w_1, w_2, alpha_1, alpha_2, g_1, g_2,
-    zeta):
-    """
-    Return matrices Hdrift, Hctrl2, Hctrlderiv of Hamiltonian after polaron
-    transform
-    """
-
-    a, b, nq, nc, Iq, Ic = standard_ops(n_qubit, n_cavity)
-
-    alpha_pol = alpha_polaron(n_qubit, w_c, w_1, w_2, g_1, g_2,
-                              alpha_1, alpha_2)
-
-    Hdrift =  w_1 * tensor(nq, Iq, Ic)        \
-            + w_2 * tensor(Iq, nq, Ic)        \
-            + 0.5 * alpha_1 * tensor(nq*nq - nq, Iq, Ic) \
-            + 0.5 * alpha_2 * tensor(Iq, nq*nq - nq, Ic) \
-            + tensor(chi1(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic) \
-            + tensor(Iq, chi1(n_qubit, w_2-w_c, g_2, alpha_2), Ic) \
-            + tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, nc) \
-            + tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), nc) \
-            + zeta * tensor(nq, nq, Ic) \
-            + w_c * tensor(Iq, Iq, nc)
-
-    chi2_q1 = kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq)
-    chi2_q2 = kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2))
-
-    Hctrl2 =    w_c * kron(alpha_pol.H * alpha_pol, Ic) \
-             + kron(chi2_q1 * alpha_pol.H * alpha_pol, Ic) \
-             + kron(chi2_q2 * alpha_pol.H * alpha_pol, Ic) \
-             + kron(alpha_pol + alpha_pol.H, Ic) \
-             + (4.0 / (w_1-w_c)**2 ) \
-                   * tensor(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq, Ic)  \
-             + (4.0 / (w_2-w_c)**2 ) \
-                   * tensor(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2), Ic)
-
-    lambda_1 = - 2 * g_1 / (w_1 - w_c)
-    lambda_2 = - 2 * g_2 / (w_2 - w_c)
-
-    Hctrlderiv =    tensor(lambda_1 * 1j                                      \
-                           * inv(alpha_1 * nq + (w_1-w_c)*Iq)                 \
-                           * b, Iq, Ic)                                       \
-                  - tensor(lambda_1 * 1j                                      \
-                           * inv(alpha_1 * nq - alpha_1*Iq + (w_1-w_c)*Iq)    \
-                           * b.H, Iq, Ic)                                     \
-                  + tensor(Iq,                                                \
-                           lambda_2 * 1j                                      \
-                           * inv(alpha_2 * nq + (w_2-w_c)*Iq)                 \
-                           * b, Ic)                                           \
-                  - tensor(Iq,                                                \
-                           lambda_2 * 1j                                      \
-                           * inv(alpha_2 * nq - alpha_2*Iq + (w_2-w_c)*Iq)    \
-                           * b.H, Ic)                                         \
-                  - kron(                                                     \
-                    1j *                                                      \
-                    inv(                                                      \
-                      w_c * kron(Iq, Iq)                                      \
-                      + kron(chi2(n_qubit, w_1-w_c, g_1, alpha_1), Iq)        \
-                      + kron(Iq, chi2(n_qubit, w_2-w_c, g_2, alpha_2))        \
-                    ), (a - a.H))
-
-    return Hdrift, Hctrl2, Hctrlderiv
 

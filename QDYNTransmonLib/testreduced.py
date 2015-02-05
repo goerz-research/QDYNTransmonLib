@@ -5,39 +5,14 @@ Code for testing the reduced model vs the full model
 import os
 import shutil
 from subprocess import call
-import contextlib
 from multiprocessing.dummy import Pool
 import numpy as np
 from QDYN.pulse import Pulse, tgrid_from_config, blackman
-from QDYN.visualization import show_U_arrow
-from QDYN.io import read_2q_gate as read_U
-import QDYN.local_invariants as LI
+from QDYN.shutil import tail
+from QDYN.gate2q import Gate2Q
 from QDYNTransmonLib.holonomic import generate_ham_files
 from QDYNTransmonLib.io import FullHamLevels, RedHamLevels, read_params
 
-# 'chdir' context manager
-@contextlib.contextmanager
-def chdir(dirname=None):
-    """
-    Change directory. Use as
-        >>> with chdir('dir'):
-        >>>     pass
-    """
-    curdir = os.getcwd()
-    try:
-        if dirname is not None:
-            os.chdir(dirname)
-        yield
-    finally:
-        os.chdir(curdir)
-
-def tail(file, n):
-    """
-    Print the last n lines of the given file
-    """
-    with open(file) as in_fh:
-        lines = in_fh.readlines()
-        print "".join(lines[-n:])
 
 def get_config(config, replacements):
     """
@@ -171,10 +146,10 @@ def run(config, nq_reduced, pulse_E0, notebook=True, folder="./"):
     call('bash %s' % prop_script, shell=True)
     if notebook:
         tail(prop_script, 12)
-    U_full = read_U(os.path.join(runfolder_full, 'U.dat'))
+    U_full = Gate2Q(file=os.path.join(runfolder_full, 'U.dat'))
     if notebook:
-        print "Concurrence (full) : ", LI.concurrence(U_full)
-        show_U_arrow(U_full, name="U_{full}")
+        print "Concurrence (full) : ", U_full.concurrence()
+        #show_U_arrow(U_full, name="U_{full}")
 
     # (2) reduced Hamiltonian #################################################
 
@@ -219,10 +194,10 @@ def run(config, nq_reduced, pulse_E0, notebook=True, folder="./"):
     call('bash %s' % prop_script, shell=True)
     if notebook:
         tail(prop_script, 12)
-    U_red = read_U(os.path.join(runfolder_red, 'U.dat'))
+    U_red = Gate2Q(file=os.path.join(runfolder_red, 'U.dat'))
     if notebook:
-        print "Concurrence (red) : ", LI.concurrence(U_red)
-        show_U_arrow(U_red, name="U_{red}")
+        print "Concurrence (red) : ", U_red.concurrence()
+        #show_U_arrow(U_red, name="U_{red}")
 
     # (3) Compare #############################################################
     overlap = (U_full.H * U_red).trace()[0, 0]
@@ -230,8 +205,8 @@ def run(config, nq_reduced, pulse_E0, notebook=True, folder="./"):
                / ( (U_full.H * U_full).trace()[0,0].real
                  * (U_red.H * U_red).trace()[0,0].real )
 
-    g1_full, g2_full, g3_full = LI.g1g2g3(U_full)
-    g1_red, g2_red, g3_red = LI.g1g2g3(U_red)
+    g1_full, g2_full, g3_full = U_full.local_invariants()
+    g1_red, g2_red, g3_red = U_red.local_invariants()
     DeltaG = np.sqrt((g1_red - g1_full)**2 + (g2_red - g2_full)**2
                      + (g3_red - g3_full)**2)
     return fidelity, DeltaG
