@@ -8,6 +8,6 @@ setup(name='QDYNTransmonLib',
       author='Michael Goerz',
       author_email='goerz@physik.uni-kassel.de',
       license='GPL',
-      packages=['QDYNTransmonLib', 'QDYNTransmonLib.PE'],
+      packages=['QDYNTransmonLib', 'QDYNTransmonLib.ham'],
       scripts=[]
      )

@@ -1,3 +1,2 @@
 import io
-import hamfull
-import hamred
+import ham
