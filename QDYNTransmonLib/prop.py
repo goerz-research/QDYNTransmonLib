@@ -52,12 +52,12 @@ def propagate(write_run, config, params, pulses, commands, runfolder):
     As a side effect, `params[T]` and `params[nt]` will be set according to the
     properties of `pulses[0]`
     """
+    mkdir(runfolder)
     U_dat_file = os.path.join(runfolder, 'U.dat')
     if not PROPAGATE:
         if os.path.isfile(U_dat_file):
             U = Gate2Q(file=U_dat_file)
             return U
-    mkdir(runfolder)
     if len(pulses) > 0:
         params['T'] = pulses[0].T()
         params['nt'] = len(pulses[0].tgrid) + 1
@@ -123,6 +123,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
     def compare_results(U1, U2):
         return norm(U1 - U2) < limit
 
+    mkdir(runfolder)
     if not PROPAGATE:
         U_dat_file = os.path.join(runfolder, 'U.dat')
         if os.path.isfile(U_dat_file):
