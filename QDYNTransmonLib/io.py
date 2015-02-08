@@ -6,7 +6,6 @@ import os
 import numpy as np
 import scipy
 from QDYN.units import NumericConverter
-import sys
 
 
 def read_params(config, unit):
@@ -298,20 +297,6 @@ def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
     return data
 
 
-def full_qnums(level_index, n_qubit, n_cavity):
-    """
-    Given a 1-based level_index, return tuple of 0-based quantum numbers
-    (i, j, n)
-    """
-    l = level_index - 1
-    nn = n_qubit * n_cavity
-    i = l / nn
-    l = l - i * nn
-    j = l / n_cavity
-    n = l - j * n_cavity
-    return (i, j, n)
-
-
 def red_qnums(level_index, nq, n_start=0):
     """
     Given 1-based level_index, return tuple of 0-based quantum numbers (i, j)
@@ -336,62 +321,6 @@ def write_chi(chi, outfile):
             E = chi[i,i]
             assert E.imag == 0.0, "All chi entries must be real"
             print >> out, "%5d%25.16E" % (i+1, E.real)
-
-
-def write_full_ham_matrix(h, outfile, comment, nq, nc, rwa_factor,
-    conversion_factor, unit, complex=False, check_hermitian=True):
-    """ Write out numpy matrix in sparse format to outfile
-
-        The given 'unit' will be written to the header of outfile, and the
-        Hamiltonian will be converted using conversion_factor, as well as
-        multiplied with rwa_factor. Multiplying with rwa_factor is to
-        account for the reduction of the pulse amplitude by a factor 1/2,
-        which was not taken into account in the analytic derivations.
-        Consequently, an Hamiltonian connected to Omega^n will have to
-        receive an rwa_factor for 1 / 2^n
-
-        If complex is True, an extra column is written for the imaginary part
-    """
-    if complex:
-        header_fmt = "#    row  column %24s %24s %20s %24s"
-        header = header_fmt % ('Re(value) [%s]' % unit,
-                               'Im(value) [%s]' % unit,
-                               'i,j,n (row)', 'i,j,n (col)')
-        fmt = "%8d%8d%25.16E%25.16E%7d%7d%7d    %7d%7d%7d"
-    else:
-        header_fmt = "#    row  column %24s %20s %24s"
-        header = header_fmt % ('value [%s]' % unit,
-                               'i,j,n (row)', 'i,j,n (col)')
-        fmt = "%8d%8d%25.16E%7d%7d%7d    %7d%7d%7d"
-    if check_hermitian:
-        for i in xrange(nq*nq*nc):
-            if (h[i,i].imag != 0.0):
-                print >> sys.stderr, "Matrix hast complex entries on diagonal"
-                sys.exit(1)
-            for j in xrange(i+1, nq*nq*nc):
-                if (abs(h[i,j] - h[j,i].conjugate()) > 1.0e-15):
-                    print >> sys.stderr, "Matrix is not Hermitian"
-                    sys.exit(1)
-    with open(outfile, 'w') as out_fh:
-        print >> out_fh, comment
-        print >> out_fh, header
-        sparse_h = scipy.sparse.coo_matrix(h)
-        for i_val in xrange(sparse_h.nnz):
-            i = sparse_h.col[i_val] + 1 # 1-based indexing
-            j = sparse_h.row[i_val] + 1
-            v = sparse_h.data[i_val]
-            v *= conversion_factor * rwa_factor
-            if (not complex):
-                assert(v.imag == 0.0), "matrix has unexpected complex values"
-            if (j >= i):
-                ii, ji, ni = full_qnums(i, nq, nc)
-                ij, jj, nj = full_qnums(j, nq, nc)
-                if complex:
-                    print >> out_fh, fmt % (i, j, v.real, v.imag,
-                                            ii, ji, ni, ij, jj, nj)
-                else:
-                    print >> out_fh, fmt % (i, j, v.real,
-                                            ii, ji, ni, ij, jj, nj)
 
 
 def write_red_ham_matrix(h, outfile, comment, nq, rwa_factor,
