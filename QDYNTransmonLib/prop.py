@@ -23,7 +23,7 @@ class NotConvergedError(Exception):
     pass
 
 
-def propagate(write_run, config, params, pulses, commands, runfolder):
+def propagate(write_run, config, params, pulse, commands, runfolder):
     """
     Propagate the Transmon system
 
@@ -31,15 +31,15 @@ def propagate(write_run, config, params, pulses, commands, runfolder):
     ---------
 
     write_run: callable
-        `write_run(config, params, pulses, runfolder)` writes all the run data
+        `write_run(config, params, pulse, runfolder)` writes all the run data
         to the given runfolder
     config: str
         Template string for the config files.
     param: dict
         Dictionary of replacements for the config template
         Keys 'T' and 'nt' will be set automatically based on the first pulse
-    pulses: list of QDYN.pulse.Pulse objects
-        List of pulses to be propagated
+    pulse: QDYN.pulse.Pulse object
+        Pulse to be propagated
     commands: str of list of str
         Shell commands to do the propagation
 
@@ -50,7 +50,7 @@ def propagate(write_run, config, params, pulses, commands, runfolder):
         Gate resulting from the propagation
 
     As a side effect, `params[T]` and `params[nt]` will be set according to the
-    properties of `pulses[0]`
+    properties of `pulse`
     """
     mkdir(runfolder)
     U_dat_file = os.path.join(runfolder, 'U.dat')
@@ -58,16 +58,9 @@ def propagate(write_run, config, params, pulses, commands, runfolder):
         if os.path.isfile(U_dat_file):
             U = Gate2Q(file=U_dat_file)
             return U
-    if len(pulses) > 0:
-        params['T'] = pulses[0].T()
-        params['nt'] = len(pulses[0].tgrid) + 1
-    if len(pulses) > 1:
-        for pulse in pulses[1:]:
-            assert abs(pulse.T() - params['T']) < 1.0e-15, \
-            "All pulses must be defined on the same time grid"
-            assert len(pulse.tgrid) + 1 == params['nt'], \
-            "All pulses must be defined on the same time grid"
-    write_run(config, params, pulses, runfolder)
+    params['T'] = pulse.T()
+    params['nt'] = len(pulse.tgrid) + 1
+    write_run(config, params, pulse, runfolder)
     with open(os.path.join(runfolder, 'prop.sh'), 'w') as prop_sh:
         if type(commands) in [list, tuple]:
             commands = "\n".join(commands)
@@ -81,7 +74,7 @@ def propagate(write_run, config, params, pulses, commands, runfolder):
     return U
 
 
-def converged_propagate(write_run, config, params, pulses, commands, runfolder,
+def converged_propagate(write_run, config, params, pulse, commands, runfolder,
     nq_step=1, nc_step=10, limit=0.01):
     """
     Run `propagate` repeatedly, varying the number of qubit levels nq, and
@@ -96,7 +89,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
     Paramters
     ---------
 
-    write_run, config, params, pulses, commands, runfolder: see `propagate`
+    write_run, config, params, pulse, commands, runfolder: see `propagate`
 
     nq_step: int
         step by which to increase nq in each iteration
@@ -138,7 +131,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
         log_header_fmt = "# "+"%6s"+"%8s"+"%15s"*2+"\n"
         log_fh.write(log_header_fmt%("nq", "nc", "Norm(U)", "C(U)"))
         log_fmt = "%8d"*2+"%15.6e"*2+"\n"
-        U = propagate(write_run, config, params, pulses, commands, runfolder)
+        U = propagate(write_run, config, params, pulse, commands, runfolder)
         log_fh.write(log_fmt%(params['nq'], params['nc'], norm(U),
                      U.closest_unitary().concurrence()))
         converged = False
@@ -149,7 +142,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
                 params['nc'] += nc_step
                 if (params['nc'] > NC_MAX):
                     raise NotConvergedError
-                next_U = propagate(write_run, config, params, pulses, commands,
+                next_U = propagate(write_run, config, params, pulse, commands,
                                 runfolder)
                 log_fh.write(log_fmt%(params['nq'], params['nc'], norm(next_U),
                              next_U.closest_unitary().concurrence()))
@@ -162,7 +155,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
                 params['nq'] += nq_step
                 if (params['nq'] > NQ_MAX):
                     raise NotConvergedError
-                next_U = propagate(write_run, config, params, pulses, commands,
+                next_U = propagate(write_run, config, params, pulse, commands,
                                 runfolder)
                 log_fh.write(log_fmt%(params['nq'], params['nc'], norm(next_U),
                              next_U.closest_unitary().concurrence()))
@@ -174,7 +167,7 @@ def converged_propagate(write_run, config, params, pulses, commands, runfolder,
             converged = False
             params['nc'] += nc_step
             params['nq'] += nq_step
-            next_U = propagate(write_run, config, params, pulses, commands,
+            next_U = propagate(write_run, config, params, pulse, commands,
                             runfolder)
             log_fh.write(log_fmt%(params['nq'], params['nc'], norm(next_U),
                             next_U.closest_unitary().concurrence()))
