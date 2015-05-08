@@ -297,8 +297,8 @@ class FullPopPlot(object):
                                             (self.styles["pulse"]["label"],),
                                             ncol=1, loc='upper right',
                                             frameon=False, borderaxespad=0.0)
-        ax_pop.add_artist(in_panel_legend)
         if legend:
+            ax_pop.add_artist(in_panel_legend)
             legend_offset = 1.0 + scale*legend_gap/panel_width
             legend_labels = [l.get_label() for l in legend_lines]
             ax_pop.legend(legend_lines, legend_labels,
