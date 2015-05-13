@@ -251,7 +251,8 @@ class FullPopPlot(object):
             self.pulse = Pulse(filename)
 
     def render(self, basis_state, ax_pop, ax_q1, ax_q2, ax_cavity,
-        pops=('00', '01', '10', '11', 'tot'), legend=False, scale=1.0):
+        pops=('00', '01', '10', '11', 'tot'), legend=False,
+        in_panel_legend=True, scale=1.0):
         """
         Render data for the propagation of one of the logical basis states onto
         the given axes, based on the data and settings stored in attributes.
@@ -272,7 +273,10 @@ class FullPopPlot(object):
             subset of ('00', '01', '10', '11', 'tot'), indicating which
             populations should be shown in the population dynamics panel
         legend: boolean
-            If true, render a legend to the right of each panel
+            If True, render a legend to the right of each panel
+        in_panel_legend: boolean
+            If True, add the legend for the total population to the top of the
+            population panel. If False, include them in the regular legend
         scale: float
             Scale all layout parameters by the given factor
         """
@@ -316,21 +320,29 @@ class FullPopPlot(object):
              **self.styles['pulse'])
         pulse_patch = mpatches.Patch(**self.styles['pulse'])
 
-        if 'tot' in pops:
-            in_panel_legend = ax_pop.legend([pulse_patch, tot],
-                                            [self.styles["pulse"]["label"],
-                                            self.styles["tot"]["label"]],
-                                            ncol=2, loc='upper center',
-                                            frameon=False, borderaxespad=0.0)
-        else:
-            in_panel_legend = ax_pop.legend((pulse_patch, ),
-                                            (self.styles["pulse"]["label"],),
-                                            ncol=1, loc='upper right',
-                                            frameon=False, borderaxespad=0.0)
+        if in_panel_legend:
+            if 'tot' in pops:
+                legend1 = ax_pop.legend([pulse_patch, tot],
+                                        [self.styles["pulse"]["label"],
+                                        self.styles["tot"]["label"]],
+                                        ncol=2, loc='upper center',
+                                        frameon=False, borderaxespad=0.0)
+            else:
+                legend1 = ax_pop.legend((pulse_patch, ),
+                                        (self.styles["pulse"]["label"],),
+                                        ncol=1, loc='upper right',
+                                        frameon=False, borderaxespad=0.0)
         if legend:
-            ax_pop.add_artist(in_panel_legend)
             legend_offset = 1.0 + scale*legend_gap/panel_width
             legend_labels = [l.get_label() for l in legend_lines]
+            if in_panel_legend:
+                ax_pop.add_artist(legend1)
+            else:
+                if 'tot' in pops:
+                    legend_lines.insert(0, tot)
+                    legend_labels.insert(0, self.styles["tot"]["label"])
+                legend_lines.append(pulse_patch)
+                legend_labels.append(self.styles["pulse"]["label"])
             ax_pop.legend(legend_lines, legend_labels,
                           title=self.legend_title.get('pop'),
                           ncol=1, loc='center left', frameon=False,
@@ -403,7 +415,7 @@ class FullPopPlot(object):
 
     def plot(self, basis_states=('00', '01', '10', '11'),
         pops=('00', '01', '10', '11', 'tot'), fig=None,
-        legend=True, quiet=True, scale=1.0):
+        legend=True, in_panel_legend=True, quiet=True, scale=1.0):
         """
         Generate a plot of the dynamics starting from the given states,
         rendering it onto the  given figure.
@@ -423,6 +435,9 @@ class FullPopPlot(object):
         legend: boolean
             If True, render a legend at the very right of the figure (one
             legend for each row of panels)
+        in_panel_legend: boolean
+            If True, add the legend for the total population to the top of the
+            population panel. If False, include them in the regular legend
         quiet: boolean
             If True, print information about the figure layout, as well as the
             matplotlib backend and rc file
@@ -491,7 +506,8 @@ class FullPopPlot(object):
             self.render(basis_state, ax[basis_state]['pop'],
                         ax[basis_state]['q1'], ax[basis_state]['q2'],
                         ax[basis_state]['cavity'], pops=pops,
-                        legend=show_legend, scale=scale)
+                        legend=show_legend, in_panel_legend=in_panel_legend,
+                        scale=scale)
 
         # synchronize all axes
         from matplotlib.ticker import AutoMinorLocator, MaxNLocator
