@@ -73,6 +73,16 @@ class FullPopPlot(object):
         'sd': styles to be used for the plot of the standard deviations of the
               mean excitation numbers
         'mean': styles to be used for the plot of the mean excitation numbers
+    panel_label: dict
+        Labels to be shown in the top right corner of each panel:
+        panel_label['cavity'] for the cavity excitation panel,
+        panel_label['q2'] for the right qubit excitation panel,
+        panel_label['q1'] for the left qubit excitation panel,
+        panel_label['pop'] for the population panel.
+        Any missing key in the panel_label dictionary, or a value of None will
+        result in no label being drawn for the respective panel. Defaults to
+        {'cavity': 'cavity', 'q2': 'right qubit', 'q1': 'left qubit',
+         'pop': None }
     unit: 'cm' or 'inch'
         Unit in which the layout parameters are given
     pop: dict
@@ -148,6 +158,12 @@ class FullPopPlot(object):
                     'rasterized': True, 'label': 'pulse'},
           'sd': {'color': 'LightGray', 'rasterized': True},
           'mean': {'color': 'black', 'rasterized': True},
+        }
+        self.panel_label = {
+            'cavity': 'cavity',
+            'q2': 'right qubit',
+            'q1': 'left qubit',
+            'pop': None
         }
         self.load(runfolder, hilbert_space)
 
@@ -279,6 +295,10 @@ class FullPopPlot(object):
                       + self.pop[basis_state].pop01 \
                       + self.pop[basis_state].pop11
             tot, = ax_pop.plot(self.tgrid, pop_sum, **self.styles['tot'])
+        panel_label = self.panel_label.get('pop')
+        if panel_label is not None:
+            ax_pop.add_artist(AnchoredText(
+                panel_label, loc=1, frameon=False, borderpad=0.0))
 
         ax_pop.axhline(y=1, **self.styles['pop_hline'])
         ax_pop.fill_between(self.pulse.tgrid,
@@ -312,8 +332,10 @@ class FullPopPlot(object):
         ax_q1.fill_between(q1_data.tgrid, q1_data.mean-q1_data.sd,
                     q1_data.mean+q1_data.sd, **self.styles['sd'])
         pmq1, = ax_q1.plot(q1_data.tgrid, q1_data.mean, **self.styles['mean'])
-        ax_q1.add_artist(AnchoredText(
-            "left qubit", loc=1, frameon=False, borderpad=0.0))
+        panel_label = self.panel_label.get('q1')
+        if panel_label is not None:
+            ax_q1.add_artist(AnchoredText(
+                panel_label, loc=1, frameon=False, borderpad=0.0))
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
             sd_patch = mpatches.Patch(**self.styles['sd'])
@@ -329,8 +351,10 @@ class FullPopPlot(object):
         ax_q2.fill_between(q2_data.tgrid, q2_data.mean-q2_data.sd,
                     q2_data.mean+q2_data.sd, **self.styles['sd'])
         pmq2, = ax_q2.plot(q2_data.tgrid, q2_data.mean, **self.styles['mean'])
-        ax_q2.add_artist(AnchoredText(
-            "right qubit", loc=1, frameon=False, borderpad=0.0))
+        panel_label = self.panel_label.get('q2')
+        if panel_label is not None:
+            ax_q2.add_artist(AnchoredText(
+                panel_label, loc=1, frameon=False, borderpad=0.0))
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
             sd_patch = mpatches.Patch(**self.styles['sd'])
@@ -349,8 +373,10 @@ class FullPopPlot(object):
                                **self.styles['sd'])
         pmcavity, = ax_cavity.plot(cavity_data.tgrid, cavity_data.mean,
                                    **self.styles['mean'])
-        ax_cavity.add_artist(AnchoredText(
-            "cavity", loc=1, frameon=False, borderpad=0.0))
+        panel_label = self.panel_label.get('cavity')
+        if panel_label is not None:
+            ax_cavity.add_artist(AnchoredText(
+                panel_label, loc=1, frameon=False, borderpad=0.0))
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
             sd_patch = mpatches.Patch(**self.styles['sd'])
