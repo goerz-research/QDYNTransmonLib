@@ -83,6 +83,15 @@ class FullPopPlot(object):
         result in no label being drawn for the respective panel. Defaults to
         {'cavity': 'cavity', 'q2': 'right qubit', 'q1': 'left qubit',
          'pop': None }
+    legend_title: dict
+        Titles to be shown in the legend for each panel
+        legend_title['cavity'] for the cavity excitation panel,
+        legend_title['q2'] for the right qubit excitation panel,
+        legend_title['q1'] for the left qubit excitation panel,
+        legend_title['pop'] for the population panel.
+        Any missing key in the legend_title dictionary, or a value of None will
+        result in no title for the respective legend. Defaults to {} (no legend
+        titles).
     unit: 'cm' or 'inch'
         Unit in which the layout parameters are given
     pop: dict
@@ -165,6 +174,7 @@ class FullPopPlot(object):
             'q1': 'left qubit',
             'pop': None
         }
+        self.legend_title = {}
         self.load(runfolder, hilbert_space)
 
     @property
@@ -322,6 +332,7 @@ class FullPopPlot(object):
             legend_offset = 1.0 + scale*legend_gap/panel_width
             legend_labels = [l.get_label() for l in legend_lines]
             ax_pop.legend(legend_lines, legend_labels,
+                          title=self.legend_title.get('pop'),
                           ncol=1, loc='center left', frameon=False,
                           bbox_to_anchor=(legend_offset, 0.5),
                           handlelength=3, labelspacing=0.3, borderpad=0.0,
@@ -341,6 +352,7 @@ class FullPopPlot(object):
             sd_patch = mpatches.Patch(**self.styles['sd'])
             ax_q1.legend([pmq1, sd_patch],
                          [r'$\langle i \rangle$', r'$\sigma_i$'],
+                         title=self.legend_title.get('q1'),
                          ncol=1, loc='center left', frameon=False,
                          bbox_to_anchor=(legend_offset, 0.5),
                          handlelength=3, labelspacing=0.3, borderpad=0.0,
@@ -360,6 +372,7 @@ class FullPopPlot(object):
             sd_patch = mpatches.Patch(**self.styles['sd'])
             ax_q2.legend([pmq2, sd_patch],
                          [r'$\langle j \rangle$', r'$\sigma_j$'],
+                         title=self.legend_title.get('q2'),
                          ncol=1, loc='center left', frameon=False,
                          bbox_to_anchor=(legend_offset, 0.5),
                          handlelength=3, labelspacing=0.3, borderpad=0.0,
@@ -382,6 +395,7 @@ class FullPopPlot(object):
             sd_patch = mpatches.Patch(**self.styles['sd'])
             ax_cavity.legend([pmcavity, sd_patch],
                          [r'$\langle n \rangle$', r'$\sigma_n$'],
+                         title=self.legend_title.get('cavity'),
                          ncol=1, loc='center left', frameon=False,
                          bbox_to_anchor=(legend_offset, 0.5),
                          handlelength=3, labelspacing=0.3, borderpad=0.0,
