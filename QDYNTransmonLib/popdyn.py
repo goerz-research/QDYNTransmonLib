@@ -109,7 +109,15 @@ class PopPlot(object):
         Dictionary of all the panels (instances of matplotlib.axes.Axes)
         that have been rendered onto a figure.  E.g. for the 00 state, the four
         panels are ax['00']['pop'], ax['00']['q1'], ax['00']['q2'],
-        ax['00']['cavity']
+        ax['00']['cavity']. Set by the plot/render methods. The dictionary may
+        be used to forther modify the figure after the plot method has been
+        called.
+    lines: dict
+        Dictionary of different types of lines/patches in the figure. The
+        standard keys are '00', '01', '10', '11', 'pop', 'pop_hline', 'pulse',
+        'mean', and 'sd'. The values (lines) may be used to construct a custom
+        legend. The dictionary should be considered read-only. It is set by the
+        plot/render methods
     pulse: QDYN.pulse.Pulse instance
         Pulse loaded from the runfolder
     tgrid: numpy array
@@ -162,6 +170,7 @@ class PopPlot(object):
         self._peak_qubit_excitation = 0.0
         self._peak_cavity_excitation = 0.0
         self.ax = {}
+        self.lines = {}
         self.styles = {
           '00' : {'label': '00'},
           '01' : {'label': '01'},
@@ -328,34 +337,41 @@ class PopPlot(object):
             p00, = ax_pop.plot(self.tgrid, self.pop[basis_state].pop00,
                             **self.styles['00'])
             legend_lines.append(p00)
+            self.lines['00'] = p00
         if '01' in pops:
             p01, = ax_pop.plot(self.tgrid, self.pop[basis_state].pop01,
                             **self.styles['01'])
             legend_lines.append(p01)
+            self.lines['01'] = p01
         if '10' in pops:
             p10, = ax_pop.plot(self.tgrid, self.pop[basis_state].pop10,
                             **self.styles['10'])
             legend_lines.append(p10)
+            self.lines['10'] = p10
         if '11' in pops:
             p11, = ax_pop.plot(self.tgrid, self.pop[basis_state].pop11,
                             **self.styles['11'])
             legend_lines.append(p11)
+            self.lines['11'] = p11
         if 'tot' in pops:
             pop_sum =   self.pop[basis_state].pop00 \
                       + self.pop[basis_state].pop10 \
                       + self.pop[basis_state].pop01 \
                       + self.pop[basis_state].pop11
             tot, = ax_pop.plot(self.tgrid, pop_sum, **self.styles['tot'])
+            self.lines['tot'] = tot
         panel_label = self.panel_label.get('pop')
         if panel_label is not None:
             ax_pop.add_artist(AnchoredText(
                 panel_label, loc=1, frameon=False, borderpad=0.0))
 
-        ax_pop.axhline(y=1, **self.styles['pop_hline'])
+        pop_hline = ax_pop.axhline(y=1, **self.styles['pop_hline'])
+        self.lines['pop_hline'] = pop_hline
         ax_pop.fill_between(self.pulse.tgrid,
              np.abs(self.pulse.amplitude)/np.max(np.abs(self.pulse.amplitude)),
              **self.styles['pulse'])
         pulse_patch = mpatches.Patch(**self.styles['pulse'])
+        self.lines['pulse'] = pulse_patch
 
         if in_panel_legend:
             if 'tot' in pops:
@@ -392,13 +408,15 @@ class PopPlot(object):
         ax_q1.fill_between(q1_data.tgrid, q1_data.mean-q1_data.sd,
                     q1_data.mean+q1_data.sd, **self.styles['sd'])
         pmq1, = ax_q1.plot(q1_data.tgrid, q1_data.mean, **self.styles['mean'])
+        self.lines['mean'] = pmq1
         panel_label = self.panel_label.get('q1')
+        sd_patch = mpatches.Patch(**self.styles['sd'])
+        self.lines['sd'] = sd_patch
         if panel_label is not None:
             ax_q1.add_artist(AnchoredText(
                 panel_label, loc=1, frameon=False, borderpad=0.0))
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
-            sd_patch = mpatches.Patch(**self.styles['sd'])
             ax_q1.legend([pmq1, sd_patch],
                          [r'$\langle i \rangle$', r'$\sigma_i$'],
                          title=self.legend_title.get('q1'),
@@ -413,12 +431,12 @@ class PopPlot(object):
                     q2_data.mean+q2_data.sd, **self.styles['sd'])
         pmq2, = ax_q2.plot(q2_data.tgrid, q2_data.mean, **self.styles['mean'])
         panel_label = self.panel_label.get('q2')
+        sd_patch = mpatches.Patch(**self.styles['sd'])
         if panel_label is not None:
             ax_q2.add_artist(AnchoredText(
                 panel_label, loc=1, frameon=False, borderpad=0.0))
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
-            sd_patch = mpatches.Patch(**self.styles['sd'])
             ax_q2.legend([pmq2, sd_patch],
                          [r'$\langle j \rangle$', r'$\sigma_j$'],
                          title=self.legend_title.get('q2'),
@@ -516,6 +534,7 @@ class PopPlot(object):
                 fig = plt.figure(figsize=(fig_width, fig_height), dpi=self.dpi)
         self.ax = {}
         ax = self.ax
+        self.lines = {}
         for i_state, basis_state in enumerate(basis_states):
             left_offset = float(left_margin + i_state*(w+gap))
             if not quiet:
