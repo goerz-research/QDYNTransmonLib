@@ -10,7 +10,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pylab as plt
 from matplotlib.offsetbox import AnchoredText
 
-class FullPopPlot(object):
+class PopPlot(object):
     """
     Plot generator for population dynamics of the transmon system
 
