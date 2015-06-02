@@ -58,7 +58,7 @@ def propagate(write_run, config, params, pulse, commands, runfolder):
         if os.path.isfile(U_dat_file):
             U = Gate2Q(file=U_dat_file)
             return U
-    params['T'] = pulse.T()
+    params['T'] = pulse.T
     params['nt'] = len(pulse.tgrid) + 1
     write_run(config, params, pulse, runfolder)
     with open(os.path.join(runfolder, 'prop.sh'), 'w') as prop_sh:
