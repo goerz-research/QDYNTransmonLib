@@ -137,10 +137,11 @@ class PopPlot(object):
         panel_width=5.0, gap=1.0, legend_gap=0.25, h_pop=2.5, h_exc=1.8,
         xaxis_minor=None, pop_top_buffer=0.8, exc_top_buffer=0.5,
         title=r'$\vert \Psi(t=0) \rangle = \vert %s \rangle$',
-        unit='cm', pulse_file='pulse.dat'):
+        unit='cm', pulse_file='pulse.dat', stride=1):
         """
-        Load data from the given runfolder. All keyword arguments set the
-        corresponding attributes.
+        Load data from the given runfolder. The `stride` keyword is passed to
+        the `load` method. All other keyword arguments set the corresponding
+        attributes.
         """
         self.pop           = {'00': None, '01': None, '10': None, '11': None}
         self.exc = {}
@@ -194,7 +195,7 @@ class PopPlot(object):
         if not cavity:
             del self.panel_label['cavity']
         self.legend_title = {}
-        self.load(runfolder, hilbert_space, cavity, pulse_file)
+        self.load(runfolder, hilbert_space, cavity, pulse_file, stride=stride)
 
     @property
     def runfolder(self):
@@ -217,7 +218,7 @@ class PopPlot(object):
         return self._peak_cavity_excitation
 
     def load(self, runfolder, hilbert_space=True, cavity=True,
-        pulse_file='pulse.dat'):
+        pulse_file='pulse.dat', stride=1):
         """
         Load data from the given runfolder
 
@@ -269,13 +270,13 @@ class PopPlot(object):
             self.exc['cavity']['01'], self.exc['q1']['01'], self.exc['q2']['01'], self.pop['01'], \
             self.exc['cavity']['10'], self.exc['q1']['10'], self.exc['q2']['10'], self.pop['10'], \
             self.exc['cavity']['11'], self.exc['q1']['11'], self.exc['q2']['11'], self.pop['11'] \
-            = collect_pop_plot_data(files, runfolder)
+            = collect_pop_plot_data(files, runfolder, stride=stride)
         else:
             self.exc['q1']['00'], self.exc['q2']['00'], self.pop['00'], \
             self.exc['q1']['01'], self.exc['q2']['01'], self.pop['01'], \
             self.exc['q1']['10'], self.exc['q2']['10'], self.pop['10'], \
             self.exc['q1']['11'], self.exc['q2']['11'], self.pop['11'] \
-            = collect_pop_plot_data(files, runfolder)
+            = collect_pop_plot_data(files, runfolder, stride=stride)
         self.tgrid = self.exc['q1']['00'].tgrid
 
         for qubit in ['q1', 'q2']:
@@ -704,7 +705,7 @@ class ExcitationDataSet():
         mean    Array of mean excitation over time
         sd      Standard Deviation from the mean, over time
     """
-    def __init__(self, filename):
+    def __init__(self, filename, stride=1):
         """ Load data from the given filename
 
             The filename must contain the time grid in the first column and
@@ -715,19 +716,19 @@ class ExcitationDataSet():
             'rho00_q2.dat' in the right format.
         """
         table       = np.genfromtxt(filename)
-        self.tgrid  = table[:,0] # first column
+        self.tgrid  = table[:,0][::stride] # first column
         nt          = len(self.tgrid)
         n           = len(table[1,:]) - 1 # number of columns, -1 for time grid
         self.mean   = np.zeros(nt)
         self.sd     = np.zeros(nt)
         for i_t, __ in enumerate(self.tgrid):
             for i_c in xrange(n):
-                if not np.isnan(table[i_t,i_c+1]):
-                    self.mean[i_t] += float(i_c) * table[i_t,i_c+1]
+                if not np.isnan(table[i_t*stride,i_c+1]):
+                    self.mean[i_t] += float(i_c) * table[i_t*stride,i_c+1]
             for i_c in xrange(n):
-                if not np.isnan(table[i_t,i_c+1]):
+                if not np.isnan(table[i_t*stride,i_c+1]):
                     self.sd[i_t] += (float(i_c) - self.mean[i_t])**2 \
-                                    * table[i_t,i_c+1]
+                                    * table[i_t*stride,i_c+1]
             self.sd[i_t] = np.sqrt(self.sd[i_t])
 
 
@@ -745,7 +746,7 @@ class PopulationDataSet():
     pop10   Population in the 10 state, over time
     pop11   Population in the 11 state, over time
     """
-    def __init__(self, filename, hilbert_space):
+    def __init__(self, filename, hilbert_space, stride=1):
         """
         Load data from the given filename
 
@@ -762,21 +763,21 @@ class PopulationDataSet():
         """
         if hilbert_space:
             table       = np.genfromtxt(filename)
-            self.tgrid  = table[:,0] # first column
+            self.tgrid  = table[:,0][::stride] # first column
             nt          = len(self.tgrid)
             self.pop00  = np.zeros(nt)
             self.pop01  = np.zeros(nt)
             self.pop10  = np.zeros(nt)
             self.pop11  = np.zeros(nt)
             for i_t, t in enumerate(self.tgrid):
-                x00 = table[i_t,1]
-                y00 = table[i_t,2]
-                x01 = table[i_t,3]
-                y01 = table[i_t,4]
-                x10 = table[i_t,5]
-                y10 = table[i_t,6]
-                x11 = table[i_t,7]
-                y11 = table[i_t,8]
+                x00 = table[i_t*stride,1]
+                y00 = table[i_t*stride,2]
+                x01 = table[i_t*stride,3]
+                y01 = table[i_t*stride,4]
+                x10 = table[i_t*stride,5]
+                y10 = table[i_t*stride,6]
+                x11 = table[i_t*stride,7]
+                y11 = table[i_t*stride,8]
                 self.pop00[i_t] = x00**2 + y00**2
                 self.pop01[i_t] = x01**2 + y01**2
                 self.pop10[i_t] = x10**2 + y10**2
@@ -784,6 +785,12 @@ class PopulationDataSet():
         else:
             self.tgrid, self.pop00, self.pop01, self.pop10, self.pop11 \
             = np.genfromtxt(filename, unpack=True)
+            if stride > 1:
+                self.tgrid = self.tgrid[::stride]
+                self.pop00 = self.pop00[::stride]
+                self.pop01 = self.pop01[::stride]
+                self.pop10 = self.pop10[::stride]
+                self.pop11 = self.pop11[::stride]
 
     def write(self, outfile):
         """ Write stored data to outfile, one column per attribute
@@ -799,7 +806,8 @@ class PopulationDataSet():
         np.savetxt(outfile, data, fmt='%25.16E'*5, header=header)
 
 
-def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
+def collect_pop_plot_data(data_files, runfolder, write_plot_data=False,
+    stride=1):
     r'''
     Take an array of data_files that must match the regular expression
 
@@ -825,6 +833,8 @@ def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
         rho00_popdyn.dat    => rho00_logical_pop_plot.dat
         ...
 
+    We take into account only every n'th value in the file, where n is the
+    value of `stride`.
     '''
     file_pt = r'(psi|rho)(00|01|10|11)_(cavity|q1|q2|phases|popdyn)\.dat'
     file_rx = re.compile(file_pt)
@@ -837,9 +847,9 @@ def collect_pop_plot_data(data_files, runfolder, write_plot_data=False):
         if os.path.isfile(filename):
             if m.group(3) in ['phases', 'popdyn']:
                 data.append(PopulationDataSet(filename,
-                            hilbert_space=(m.group(1)=='psi')))
+                            hilbert_space=(m.group(1)=='psi'), stride=stride))
             else:
-                data.append(ExcitationDataSet(filename))
+                data.append(ExcitationDataSet(filename, stride=stride))
             if write_plot_data:
                 prefix = m.group(1) + m.group(2)
                 outfile = {
