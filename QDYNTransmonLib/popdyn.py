@@ -128,6 +128,8 @@ class PopPlot(object):
     peak_cavity_excitation float (read only)
         Peak cavity excitation, from the propagation of any of the logical
         states
+    pulse_file: str
+        Name of file inside the runfolder from which to read the file
     """
 
     def __init__(self, runfolder, hilbert_space=True, cavity=True, dpi=300,
@@ -135,7 +137,7 @@ class PopPlot(object):
         panel_width=5.0, gap=1.0, legend_gap=0.25, h_pop=2.5, h_exc=1.8,
         xaxis_minor=None, pop_top_buffer=0.8, exc_top_buffer=0.5,
         title=r'$\vert \Psi(t=0) \rangle = \vert %s \rangle$',
-        unit='cm'):
+        unit='cm', pulse_file='pulse.dat'):
         """
         Load data from the given runfolder. All keyword arguments set the
         corresponding attributes.
@@ -192,7 +194,7 @@ class PopPlot(object):
         if not cavity:
             del self.panel_label['cavity']
         self.legend_title = {}
-        self.load(runfolder, hilbert_space, cavity)
+        self.load(runfolder, hilbert_space, cavity, pulse_file)
 
     @property
     def runfolder(self):
@@ -214,7 +216,8 @@ class PopPlot(object):
         """Return the peak cavity exitation, over all propagations"""
         return self._peak_cavity_excitation
 
-    def load(self, runfolder, hilbert_space=True, cavity=True):
+    def load(self, runfolder, hilbert_space=True, cavity=True,
+        pulse_file='pulse.dat'):
         """
         Load data from the given runfolder
 
@@ -291,9 +294,12 @@ class PopPlot(object):
                     self._peak_cavity_excitation = peak_cavity_excitation
 
         # Load pulse
-        filename = os.path.join(runfolder, 'pulse.dat')
-        if os.path.isfile(filename):
-            self.pulse = Pulse(filename)
+        filename = os.path.join(runfolder, pulse_file)
+        try:
+            if os.path.isfile(filename):
+                self.pulse = Pulse(filename)
+        except IOError:
+            self.pulse = None
 
     def render(self, basis_state, ax_pop, ax_q1, ax_q2, ax_cavity,
         pops=('00', '01', '10', '11', 'tot'), legend=False,
@@ -367,24 +373,30 @@ class PopPlot(object):
 
         pop_hline = ax_pop.axhline(y=1, **self.styles['pop_hline'])
         self.lines['pop_hline'] = pop_hline
-        ax_pop.fill_between(self.pulse.tgrid,
-             np.abs(self.pulse.amplitude)/np.max(np.abs(self.pulse.amplitude)),
-             **self.styles['pulse'])
+        if self.pulse is not None:
+            ax_pop.fill_between(self.pulse.tgrid,
+                np.abs(self.pulse.amplitude)
+                / np.max(np.abs(self.pulse.amplitude)),
+                **self.styles['pulse'])
         pulse_patch = mpatches.Patch(**self.styles['pulse'])
         self.lines['pulse'] = pulse_patch
 
         if in_panel_legend:
+            ipl_patches = []
+            ipl_labels = []
+            if self.pulse is not None:
+                ipl_patches.append(pulse_patch)
+                ipl_labels.append(self.styles["pulse"]["label"])
             if 'tot' in pops:
-                legend1 = ax_pop.legend([pulse_patch, tot],
-                                        [self.styles["pulse"]["label"],
-                                        self.styles["tot"]["label"]],
-                                        ncol=2, loc='upper center',
+                ipl_patches.append(tot)
+                ipl_labels.append(self.styles["tot"]["label"])
+            if len(ipl_patches) > 0:
+                legend1 = ax_pop.legend(ipl_patches, ipl_labels,
+                                        ncol=len(ipl_patches),
+                                        loc='upper right',
                                         frameon=False, borderaxespad=0.0)
             else:
-                legend1 = ax_pop.legend((pulse_patch, ),
-                                        (self.styles["pulse"]["label"],),
-                                        ncol=1, loc='upper right',
-                                        frameon=False, borderaxespad=0.0)
+                in_panel_legend = False
         if legend:
             legend_offset = 1.0 + scale*legend_gap/panel_width
             legend_labels = [l.get_label() for l in legend_lines]
@@ -394,8 +406,9 @@ class PopPlot(object):
                 if 'tot' in pops:
                     legend_lines.insert(0, tot)
                     legend_labels.insert(0, self.styles["tot"]["label"])
-                legend_lines.append(pulse_patch)
-                legend_labels.append(self.styles["pulse"]["label"])
+                if self.pulse is not None:
+                    legend_lines.append(pulse_patch)
+                    legend_labels.append(self.styles["pulse"]["label"])
             ax_pop.legend(legend_lines, legend_labels,
                           title=self.legend_title.get('pop'),
                           ncol=1, loc='center left', frameon=False,
@@ -586,7 +599,11 @@ class PopPlot(object):
                 current_ax.xaxis.set_minor_locator(
                     AutoMinorLocator(self.xaxis_minor))
                 if panel == 'pop':
-                    current_ax.set_xlabel('time (%s)' % self.pulse.time_unit)
+                    if self.pulse is None:
+                        current_ax.set_xlabel('time')
+                    else:
+                        current_ax.set_xlabel('time (%s)'
+                                              % self.pulse.time_unit)
                 else:
                     current_ax.set_xticklabels([])
                 # synchronize y-axis
