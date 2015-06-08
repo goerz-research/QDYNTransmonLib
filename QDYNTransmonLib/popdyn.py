@@ -375,9 +375,11 @@ class PopPlot(object):
         pop_hline = ax_pop.axhline(y=1, **self.styles['pop_hline'])
         self.lines['pop_hline'] = pop_hline
         if self.pulse is not None:
+            pulse_norm = np.max(np.abs(self.pulse.amplitude))
+            if pulse_norm == 0.0:
+                pulse_norm = 1.0
             ax_pop.fill_between(self.pulse.tgrid,
-                np.abs(self.pulse.amplitude)
-                / np.max(np.abs(self.pulse.amplitude)),
+                np.abs(self.pulse.amplitude) / pulse_norm,
                 **self.styles['pulse'])
         pulse_patch = mpatches.Patch(**self.styles['pulse'])
         self.lines['pulse'] = pulse_patch
